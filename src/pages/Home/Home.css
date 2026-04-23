@@ -1,0 +1,80 @@
+.hero {
+  background: linear-gradient(135deg, #1e293b, #020617);
+  border: 1px solid rgba(139,92,246,0.2);
+  box-shadow: 0 0 40px rgba(139,92,246,0.15);
+}
+
+.game-card,
+.stat-card,
+.ranking-card {
+  background: #0f172a;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: 0.3s;
+}
+
+/* SOLO hover tiene glow */
+.game-card:hover,
+.stat-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 10px 25px rgba(139,92,246,0.4);
+  border: 1px solid rgba(139,92,246,0.5);
+}
+
+/* botones */
+.btn-primary {
+  background: linear-gradient(135deg, #8b5cf6, #22c55e);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 10px;
+  color: white;
+  font-weight: 600;
+  transition: 0.3s;
+}
+
+.btn-primary:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(139,92,246,0.6);
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid #555;
+  padding: 8px 16px;
+  border-radius: 10px;
+  color: var(--text-soft);
+}
+
+/* stats */
+.stats-mini {
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* chart */
+.chart-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 40px;
+}
+
+/* ranking */
+.ranking-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.gold { box-shadow: 0 0 10px gold; }
+.silver { box-shadow: 0 0 10px silver; }
+.bronze { box-shadow: 0 0 10px #cd7f32; }
