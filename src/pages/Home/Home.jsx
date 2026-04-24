@@ -24,15 +24,28 @@ export default function Home() {
 
         {/* HERO */}
         <div className="hero">
-          <div className="hero-content">
+
+          <div className="hero-left">
             <h1>ISC Playground</h1>
             <p>Compite, juega y sube en el ranking</p>
-            <button className="btn-primary">About us</button>
+
+            <div className="hero-actions">
+              <button className="btn-primary">Jugar ahora</button>
+              <button className="btn-secondary">About us</button>
+            </div>
+
+            {/* 🔥 mini stats dentro del hero */}
+            <div className="hero-stats">
+              <div>👤 50 jugadores</div>
+              <div>🎮 3 juegos</div>
+              <div>🏆 120 partidas</div>
+            </div>
           </div>
 
-          <div className="hero-image">
-            <img src={logo} alt="ISC Playground Logo" />
+          <div className="hero-right">
+            <img src={logo} alt="logo" />
           </div>
+
         </div>
 
         {/* JUEGOS */}

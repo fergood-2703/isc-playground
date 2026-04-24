@@ -27,3 +27,8 @@ body::before {
   50% { transform: translate(-20%, -20%); }
   100% { transform: translate(0,0); }
 }
+
+img {
+  max-width: 100%;
+  height: auto;
+}
