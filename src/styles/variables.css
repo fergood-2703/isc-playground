@@ -1,9 +1,13 @@
 :root {
-  --bg: #05070d;
-  --card: rgba(15,23,42,0.7);
-  --primary: #8b5cf6;
-  --secondary: #22c55e;
-  --accent: #06b6d4;
-  --text: #e5e7eb;
+  --bg: #020617;
+  --card: #0b1120;
+  --card-light: #111827;
+
+  --primary: #8b5cf6;   /* morado */
+  --secondary: #06b6d4; /* cian */
+
+  --text: #f1f5f9;
   --text-soft: #94a3b8;
+
+  --border: rgba(255,255,255,0.08);
 }
