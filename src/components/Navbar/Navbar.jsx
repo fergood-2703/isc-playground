@@ -1,24 +1,38 @@
+import { useState } from "react";
 import "./Navbar.css";
 import logo from "../../assets/images/logo-isc.png";
 
 export default function Navbar() {
-  return (
-    <div className="navbar">
+  const [open, setOpen] = useState(false);
 
-      {/* IZQUIERDA */}
+  return (
+    <nav className="navbar">
+
+      {/* LOGO */}
       <div className="nav-left">
-        <img src={logo} alt="ISC" className="logo" />
-        <span className="brand">ISC Playground</span>
+        <img src={logo} alt="ISC Logo" />
+        <span>ISC Playground</span>
       </div>
 
-      {/* DERECHA */}
-      <div className="nav-links">
+      {/* LINKS DESKTOP */}
+      <div className={`nav-right ${open ? "active" : ""}`}>
         <a href="#">Inicio</a>
         <a href="#">Juegos</a>
+        <a href="#">Ranking</a>
         <a href="#">About Us</a>
-        <button className="login-btn">Login</button>
+        <button className="btn-login">Login</button>
       </div>
 
-    </div>
+      {/* MENU HAMBURGUESA */}
+      <div 
+        className={`hamburger ${open ? "open" : ""}`}
+        onClick={() => setOpen(!open)}
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+
+    </nav>
   );
 }
