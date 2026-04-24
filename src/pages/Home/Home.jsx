@@ -1,5 +1,6 @@
 import Navbar from "../../components/Navbar/Navbar";
 import StatsChart from "../../components/StatsChart/StatsChart";
+import logo from "../../assets/images/playground-logo.png";
 import "./Home.css";
 
 export default function Home() {
@@ -23,9 +24,15 @@ export default function Home() {
 
         {/* HERO */}
         <div className="hero">
-          <h1>ISC Playground</h1>
-          <p>Compite, juega y sube en el ranking</p>
-          <button className="btn-primary">Ver juegos</button>
+          <div className="hero-content">
+            <h1>ISC Playground</h1>
+            <p>Compite, juega y sube en el ranking</p>
+            <button className="btn-primary">About us</button>
+          </div>
+
+          <div className="hero-image">
+            <img src={logo} alt="ISC Playground Logo" />
+          </div>
         </div>
 
         {/* JUEGOS */}
