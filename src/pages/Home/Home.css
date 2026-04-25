@@ -3,11 +3,12 @@
   justify-content: space-between;
   align-items: center;
 
-  padding: 40px 50px; /* 🔥 más compacto */
+  padding: 40px 50px;
+  /* 🔥 más compacto */
   border-radius: 20px;
 
-  background: radial-gradient(circle at 80% 20%, rgba(139,92,246,0.2), transparent),
-              linear-gradient(135deg, #020617, #0f172a);
+  background: radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.2), transparent),
+    linear-gradient(135deg, #020617, #0f172a);
 
   position: relative;
   overflow: hidden;
@@ -19,7 +20,7 @@
   position: absolute;
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(168,85,247,0.3), transparent);
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.3), transparent);
   right: -100px;
   top: -100px;
   filter: blur(100px);
@@ -27,8 +28,13 @@
 }
 
 @keyframes pulse {
-  0% { opacity: 0.4; }
-  100% { opacity: 0.8; }
+  0% {
+    opacity: 0.4;
+  }
+
+  100% {
+    opacity: 0.8;
+  }
 }
 
 /* LEFT */
@@ -65,9 +71,17 @@
 
 /* animación flotante 🔥 */
 @keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
 }
 
 /* imagen */
@@ -76,46 +90,92 @@
   opacity: 0.9;
 
   /* 🔥 glow gamer */
-  filter: drop-shadow(0 0 20px rgba(139,92,246,0.5));
+  filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.5));
   transition: 0.4s ease;
 }
 
 .hero-image img:hover {
   transform: scale(1.05) rotate(1deg);
-  filter: drop-shadow(0 0 40px rgba(139,92,246,0.9));
+  filter: drop-shadow(0 0 40px rgba(139, 92, 246, 0.9));
 }
 
 .hero::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
 .game-card {
-  background: var(--card);
-  border-radius: 14px;
-  padding: 20px;
-  border: 1px solid var(--border);
-  transition: 0.3s;
   position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0a0f1f;
+  border: 1px solid rgba(124, 77, 255, 0.15);
+
+  transition: 0.4s;
+  cursor: pointer;
 }
 
+/* 🔥 Hover PRO */
 .game-card:hover {
-  transform: translateY(-8px);
-  border: 1px solid var(--primary);
-  box-shadow: 0 10px 30px rgba(139,92,246,0.3);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow:
+    0 0 20px rgba(124, 77, 255, 0.4),
+    0 0 40px rgba(0, 240, 255, 0.2);
 }
 
-.game-card h3 {
-  font-size: 20px;
-  margin-bottom: 5px;
+/* Imagen */
+.game-img {
+  position: relative;
+  height: 180px;
+  overflow: hidden;
 }
 
-.game-card p {
-  color: var(--text-soft);
+.game-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+
+  transition: 0.4s;
+}
+
+/* Zoom al hover */
+.game-card:hover img {
+  transform: scale(1.1);
+}
+
+/* Overlay oscuro gamer */
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top,
+      rgba(10, 15, 31, 1),
+      rgba(10, 15, 31, 0.2));
+}
+
+/* Info */
+.game-info {
+  padding: 16px;
+}
+
+.game-info h3 {
+  margin: 0;
+  font-size: 18px;
+  color: white;
+}
+
+.game-info p {
+  margin: 6px 0 12px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* Botón */
+.game-info button {
+  width: 100%;
 }
 
 /* botones */
@@ -175,7 +235,7 @@ button {
 
 .stat-card:hover {
   border: 1px solid var(--secondary);
-  box-shadow: 0 0 15px rgba(6,182,212,0.4);
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
 }
 
 /* chart */
@@ -244,4 +304,31 @@ button {
     flex-wrap: wrap;
     gap: 10px;
   }
+}
+.title-gamer {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  margin: 40px 0 20px;
+
+  color: white;
+  position: relative;
+}
+
+/* línea izquierda */
+.title-gamer::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  width: 4px;
+  height: 20px;
+  background: linear-gradient(#7c4dff, #00f0ff);
+}
+
+/* glow suave */
+.title-gamer {
+  text-shadow: 0 0 10px rgba(124, 77, 255, 0.4);
 }

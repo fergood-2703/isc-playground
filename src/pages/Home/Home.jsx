@@ -1,14 +1,35 @@
 import Navbar from "../../components/Navbar/Navbar";
 import StatsChart from "../../components/StatsChart/StatsChart";
 import logo from "../../assets/images/playground-logo.png";
+import cs from "../../assets/images/juegos/cs.jpg";
+import bombsquad from "../../assets/images/juegos/bombsquad.jpg";
+import soulknight from "../../assets/images/juegos/soulknight.jpg";
 import "./Home.css";
 
 export default function Home() {
 
   const games = [
-    { id: 1, nombre: "Counter Strike", jugadores: 11 },
-    { id: 2, nombre: "Among Us", jugadores: 10 },
-    { id: 3, nombre: "Soul Knight", jugadores: 8 },
+    {
+      id: 1,
+      nombre: "Counter Strike",
+      jugadores: 11,
+      desc: "FPS táctico por equipos",
+      img: cs
+    },
+    {
+      id: 2,
+      nombre: "BombSquad",
+      jugadores: 10,
+      desc: "Acción caótica con bombas",
+      img: bombsquad
+    },
+    {
+      id: 3,
+      nombre: "Soul Knight",
+      jugadores: 8,
+      desc: "Roguelike de mazmorras",
+      img: soulknight
+    },
   ];
 
   const playersData = games.map(g => ({
@@ -49,17 +70,28 @@ export default function Home() {
         </div>
 
         {/* JUEGOS */}
-        <h2>🎮 Juegos disponibles</h2>
+        <h2 className="title-gamer">
+          JUEGOS DISPONIBLES
+        </h2>
+
         <div className="grid grid-3">
           {games.map(game => (
             <div key={game.id} className="game-card">
-              <h3>{game.nombre}</h3>
-              <p>{game.jugadores} jugadores activos</p>
 
-              <div className="buttons">
-                <button className="btn-primary">Jugar</button>
-                <button className="btn-secondary">Detalles</button>
+              <div className="game-img">
+                <img src={game.img} alt={game.nombre} />
+                <div className="overlay" />
               </div>
+
+              <div className="game-info">
+                <h3>{game.nombre}</h3>
+                <p>{game.desc}</p>
+
+                <button className="btn-primary">
+                  Ver detalles →
+                </button>
+              </div>
+
             </div>
           ))}
         </div>
