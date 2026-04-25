@@ -4,11 +4,15 @@
   align-items: center;
 
   padding: 40px 50px;
-  /* 🔥 más compacto */
   border-radius: 20px;
 
-  background: radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.2), transparent),
-    linear-gradient(135deg, #020617, #0f172a);
+  background:
+    linear-gradient(135deg, #020617 40%, #1e1b4b 100%);
+
+ 
+
+  box-shadow:
+    0 0 40px rgba(124, 77, 255, 0.15);
 
   position: relative;
   overflow: hidden;
@@ -112,11 +116,30 @@
   position: relative;
   border-radius: 16px;
   overflow: hidden;
-  background: #0a0f1f;
+
+  background: linear-gradient(145deg, #0a0f1f, #020617);
+
   border: 1px solid rgba(124, 77, 255, 0.15);
 
+  box-shadow: 0 0 10px rgba(0,0,0,0.6);
+
   transition: 0.4s;
-  cursor: pointer;
+}
+
+/* borde glow animado */
+.game-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+
+  background: linear-gradient(120deg, transparent, rgba(124,77,255,0.3), transparent);
+  opacity: 0;
+  transition: 0.4s;
+}
+
+.game-card:hover::before {
+  opacity: 1;
 }
 
 /* 🔥 Hover PRO */
