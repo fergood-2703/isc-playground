@@ -1,11 +1,13 @@
+@import "tailwindcss";
 body {
   margin: 0;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   color: white;
 
-  background: radial-gradient(circle at 20% 20%, rgba(124,77,255,0.2), transparent),
-              radial-gradient(circle at 80% 80%, rgba(0,240,255,0.15), transparent),
-              #05070f;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(124, 77, 255, 0.2), transparent),
+    radial-gradient(circle at 80% 80%, rgba(0, 240, 255, 0.15), transparent),
+    #05070f;
 
   overflow-x: hidden;
 }
@@ -17,21 +19,22 @@ body::before {
   inset: 0;
   z-index: -1;
 
-  background: linear-gradient(
-    120deg,
-    #05070f,
-    #0a0f1f,
-    #05070f
-  );
+  background: linear-gradient(120deg, #05070f, #0a0f1f, #05070f);
 
   background-size: 200% 200%;
   animation: bgMove 12s ease infinite;
 }
 
 @keyframes bgMove {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 body::after {
   content: "";
@@ -39,9 +42,9 @@ body::after {
   inset: 0;
   z-index: -1;
 
-  background-image: 
-    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
 
   background-size: 40px 40px;
   opacity: 0.3;
