@@ -8,6 +8,7 @@ import Juegos from "./pages/Dashboard/views/Juegos";
 import Equipos from "./pages/Dashboard/views/Equipos";
 import Usuarios from "./pages/Dashboard/views/Usuarios";
 import Ranking from "./pages/Dashboard/views/Ranking";
+import DashboardHome from "./pages/Dashboard/views/DashboardHome";
 
 
 export default function App() {
@@ -22,7 +23,7 @@ export default function App() {
 
         {/* ADMIN DASHBOARD */}
         <Route path="/admin" element={<DashboardLayout />}>
-          <Route index element={<h2>Dashboard Home</h2>} />
+          <Route index element={<DashboardHome />} />
           <Route path="juegos" element={<Juegos/>} />
           <Route path="usuarios" element={<Usuarios/>} />
           <Route path="equipos" element={<Equipos/>} />
