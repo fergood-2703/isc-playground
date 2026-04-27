@@ -5,6 +5,8 @@ import Login from "./pages/Login/Login";
 import Registro from "./pages/Registro/Registro";
 import DashboardLayout from "./pages/Dashboard/DashboardLayout"; // 
 import Juegos from "./pages/Dashboard/views/Juegos";
+import Equipos from "./pages/Dashboard/views/Equipos";
+
 
 export default function App() {
   return (
@@ -21,7 +23,7 @@ export default function App() {
           <Route index element={<h2>Dashboard Home</h2>} />
           <Route path="juegos" element={<Juegos/>} />
           <Route path="usuarios" element={<h2>Usuarios</h2>} />
-          <Route path="equipos" element={<h2>Equipos</h2>} />
+          <Route path="equipos" element={<Equipos/>} />
           <Route path="ranking" element={<h2>Ranking</h2>} />
         </Route>
 
