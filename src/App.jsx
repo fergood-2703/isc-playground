@@ -6,6 +6,8 @@ import Registro from "./pages/Registro/Registro";
 import DashboardLayout from "./pages/Dashboard/DashboardLayout"; // 
 import Juegos from "./pages/Dashboard/views/Juegos";
 import Equipos from "./pages/Dashboard/views/Equipos";
+import Usuarios from "./pages/Dashboard/views/Usuarios";
+import Ranking from "./pages/Dashboard/views/Ranking";
 
 
 export default function App() {
@@ -22,9 +24,9 @@ export default function App() {
         <Route path="/admin" element={<DashboardLayout />}>
           <Route index element={<h2>Dashboard Home</h2>} />
           <Route path="juegos" element={<Juegos/>} />
-          <Route path="usuarios" element={<h2>Usuarios</h2>} />
+          <Route path="usuarios" element={<Usuarios/>} />
           <Route path="equipos" element={<Equipos/>} />
-          <Route path="ranking" element={<h2>Ranking</h2>} />
+          <Route path="ranking" element={<Ranking/>}/>
         </Route>
 
       </Routes>

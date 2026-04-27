@@ -1,0 +1,76 @@
+.ranking {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+/* TOP 3 */
+.top3 {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+/* TARJETAS */
+.top-card {
+  flex: 1;
+  max-width: 200px;
+  text-align: center;
+  padding: 20px;
+  border-radius: 12px;
+
+  background: rgba(15,23,42,0.8);
+  border: 1px solid rgba(255,255,255,0.05);
+
+  transition: 0.3s;
+}
+
+.top-card:hover {
+  transform: translateY(-5px);
+}
+
+/* POSICIONES */
+.pos-1 {
+  box-shadow: 0 0 20px gold;
+}
+
+.pos-2 {
+  box-shadow: 0 0 15px silver;
+}
+
+.pos-3 {
+  box-shadow: 0 0 10px #cd7f32;
+}
+
+.position {
+  font-size: 20px;
+  font-weight: bold;
+  color: #22c55e;
+}
+
+/* LISTA */
+.ranking-list {
+  background: rgba(15,23,42,0.7);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ranking-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.ranking-row:hover {
+  background: rgba(124,77,255,0.08);
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .top3 {
+    flex-direction: column;
+    align-items: center;
+  }
+}
