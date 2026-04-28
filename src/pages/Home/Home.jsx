@@ -25,7 +25,7 @@ export default function Home() {
             <p>Compite, juega y sube en el ranking</p>
             <div className="hero-actions">
               <button className="btn-primary">Jugar ahora</button>
-              <button className="btn-secondary">About us</button>
+              <button className="btn-secondary" onClick={() => navigate("/about")}>About us</button>
             </div>
             <div className="hero-stats">
               <div>👤 50 jugadores</div>

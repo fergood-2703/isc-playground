@@ -4,6 +4,8 @@ import Home from "./pages/Home/Home";
 import Login from "./pages/Login/Login";
 import Registro from "./pages/Registro/Registro";
 import JuegosPage from "./pages/Juegos/Juegos";
+import RankingPage from "./pages/Ranking/Ranking";
+import AboutPage from "./pages/About/About";
 
 // detalles juego
 import Detalles from "./pages/Juegos/Detalles/Detalles";
@@ -26,6 +28,8 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/juegos" element={<JuegosPage />} />
+        <Route path="/ranking" element={<RankingPage />} />
+        <Route path="/about" element={<AboutPage />} />
 
         {/* detalles */}
         <Route path="/juego/:id" element={<Detalles />} />
