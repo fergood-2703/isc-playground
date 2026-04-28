@@ -3,13 +3,17 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home/Home";
 import Login from "./pages/Login/Login";
 import Registro from "./pages/Registro/Registro";
-import DashboardLayout from "./pages/Dashboard/DashboardLayout"; // 
+
+// detalles juego
+import Detalles from "./pages/Juegos/Detalles/Detalles";
+
+// dashboard admin
+import DashboardLayout from "./pages/Dashboard/DashboardLayout";
 import Juegos from "./pages/Dashboard/views/Juegos";
 import Equipos from "./pages/Dashboard/views/Equipos";
 import Usuarios from "./pages/Dashboard/views/Usuarios";
 import Ranking from "./pages/Dashboard/views/Ranking";
 import DashboardHome from "./pages/Dashboard/views/DashboardHome";
-
 
 export default function App() {
   return (
@@ -21,13 +25,16 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
 
-        {/* ADMIN DASHBOARD */}
+        {/* detalles juego */}
+        <Route path="/juego/:id" element={<Detalles />} />
+
+        {/* admin dashboard */}
         <Route path="/admin" element={<DashboardLayout />}>
           <Route index element={<DashboardHome />} />
-          <Route path="juegos" element={<Juegos/>} />
-          <Route path="usuarios" element={<Usuarios/>} />
-          <Route path="equipos" element={<Equipos/>} />
-          <Route path="ranking" element={<Ranking/>}/>
+          <Route path="juegos" element={<Juegos />} />
+          <Route path="usuarios" element={<Usuarios />} />
+          <Route path="equipos" element={<Equipos />} />
+          <Route path="ranking" element={<Ranking />} />
         </Route>
 
       </Routes>
