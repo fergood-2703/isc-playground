@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ShieldCheck,
@@ -31,14 +31,6 @@ export default function Registro() {
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-
-  const particles = useMemo(() => {
-    return Array.from({ length: 30 }, (_, i) => ({
-      id: i,
-      left: `${(i * 37) % 100}%`,
-      delay: `${(i * 0.7) % 10}s`,
-    }));
-  }, []);
 
   const [form, setForm] = useState({
     nombres: "",
@@ -157,16 +149,6 @@ export default function Registro() {
 
   return (
     <div className="registro-page">
-      {particles.map((p) => (
-        <span
-          key={p.id}
-          style={{
-            left: p.left,
-            animationDelay: p.delay,
-          }}
-        />
-      ))}
-
       <div className="registro-card">
         <header className="registro-header">
           <div className="logo-wrapper">
@@ -191,14 +173,14 @@ export default function Registro() {
                 setErrors((prev) => ({ ...prev, adminCode: "" }));
               }}
             >
-              Registro normal
+              Usuarios
             </button>
             <button
               type="button"
               className={roleType === "admin" ? "active" : ""}
               onClick={() => setRoleType("admin")}
             >
-              Registro admin
+              Administradores
             </button>
           </div>
 
