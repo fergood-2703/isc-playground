@@ -1,19 +1,20 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ShieldCheck,
   UserRound,
   User,
+  Mail,
   AtSign,
   Lock,
   Eye,
   EyeOff,
-  Phone,
   AlertCircle,
   CheckCircle2,
   Home,
   Loader2,
 } from "lucide-react";
+import logo from "../../assets/images/playground-logo.png";
 import "./Registro.css";
 
 const ROLES = {
@@ -31,11 +32,19 @@ export default function Registro() {
   const [apiError, setApiError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
+  const particles = useMemo(() => {
+    return Array.from({ length: 30 }, (_, i) => ({
+      id: i,
+      left: `${(i * 37) % 100}%`,
+      delay: `${(i * 0.7) % 10}s`,
+    }));
+  }, []);
+
   const [form, setForm] = useState({
     nombres: "",
     apellidos: "",
-    identifier: "",
-    telefono: "",
+    email: "",
+    username: "",
     password: "",
     confirmPassword: "",
     adminCode: "",
@@ -58,11 +67,17 @@ export default function Registro() {
     const newErrors = {};
 
     if (!form.nombres.trim()) newErrors.nombres = "Los nombres son requeridos";
-    if (!form.apellidos.trim())
-      newErrors.apellidos = "Los apellidos son requeridos";
-    if (!form.identifier.trim()) {
-      newErrors.identifier = "Ingresa correo o username";
+    if (!form.apellidos.trim()) newErrors.apellidos = "Los apellidos son requeridos";
+    if (!form.email.trim()) {
+      newErrors.email = "Ingresa tu correo";
+    } else if (!/^\S+@\S+\.\S+$/.test(form.email)) {
+      newErrors.email = "Correo inválido";
     }
+
+    if (!form.username.trim()) {
+      newErrors.username = "Ingresa un username";
+    }
+
     if (!form.password) {
       newErrors.password = "La contraseña es requerida";
     } else if (form.password.length < 4) {
@@ -92,9 +107,21 @@ export default function Registro() {
 
     try {
       const users = JSON.parse(localStorage.getItem("isc_users") || "[]");
-      const exists = users.some(
-        (user) => user.identifier.toLowerCase() === form.identifier.trim().toLowerCase(),
-      );
+      const emailValue = form.email.trim().toLowerCase();
+      const usernameValue = form.username.trim().toLowerCase();
+
+      const exists = users.some((user) => {
+        const storedEmail = (user.email || "").toLowerCase();
+        const storedUsername = (user.username || user.identifier || "").toLowerCase();
+        const storedIdentifier = (user.identifier || "").toLowerCase();
+
+        return (
+          storedEmail === emailValue ||
+          storedUsername === usernameValue ||
+          storedIdentifier === emailValue ||
+          storedIdentifier === usernameValue
+        );
+      });
 
       if (exists) {
         setApiError("Este correo o username ya está registrado");
@@ -104,8 +131,9 @@ export default function Registro() {
       const newUser = {
         nombres: form.nombres.trim(),
         apellidos: form.apellidos.trim(),
-        identifier: form.identifier.trim(),
-        telefono: form.telefono.trim(),
+        email: form.email.trim(),
+        username: form.username.trim(),
+        identifier: form.username.trim(),
         password: form.password,
         role: ROLES[roleType],
         createdAt: new Date().toISOString(),
@@ -120,7 +148,7 @@ export default function Registro() {
       );
 
       setTimeout(() => navigate("/login"), 1200);
-    } catch (error) {
+    } catch {
       setApiError("No se pudo guardar el registro en este equipo");
     } finally {
       setIsLoading(false);
@@ -129,13 +157,28 @@ export default function Registro() {
 
   return (
     <div className="registro-page">
+      {particles.map((p) => (
+        <span
+          key={p.id}
+          style={{
+            left: p.left,
+            animationDelay: p.delay,
+          }}
+        />
+      ))}
+
       <div className="registro-card">
         <header className="registro-header">
-          <div className="registro-icon-wrap">
-            {roleType === "admin" ? <ShieldCheck size={26} /> : <UserRound size={26} />}
+          <div className="logo-wrapper">
+            <img src={logo} alt="ISC Playground Logo" />
           </div>
-          <h1>Registro</h1>
-          <p>Selecciona el tipo de cuenta y completa tus datos</p>
+
+          <div className="registro-icon-wrap">
+            {roleType === "admin" ? <ShieldCheck size={22} /> : <UserRound size={22} />}
+          </div>
+
+          <h1>Crear cuenta</h1>
+          <p>Completa tus datos para registrarte</p>
         </header>
 
         <div className="registro-body">
@@ -179,12 +222,7 @@ export default function Registro() {
                 <span>Nombres *</span>
                 <div className="input-wrap">
                   <User size={15} />
-                  <input
-                    type="text"
-                    name="nombres"
-                    value={form.nombres}
-                    onChange={handleInputChange}
-                  />
+                  <input type="text" name="nombres" value={form.nombres} onChange={handleInputChange} />
                 </div>
                 {errors.nombres && <small className="error-msg">{errors.nombres}</small>}
               </label>
@@ -193,44 +231,40 @@ export default function Registro() {
                 <span>Apellidos *</span>
                 <div className="input-wrap">
                   <User size={15} />
-                  <input
-                    type="text"
-                    name="apellidos"
-                    value={form.apellidos}
-                    onChange={handleInputChange}
-                  />
+                  <input type="text" name="apellidos" value={form.apellidos} onChange={handleInputChange} />
                 </div>
                 {errors.apellidos && <small className="error-msg">{errors.apellidos}</small>}
               </label>
             </div>
 
             <label className="field">
-              <span>Correo o username *</span>
+              <span>Correo *</span>
+              <div className="input-wrap">
+                <Mail size={15} />
+                <input
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={handleInputChange}
+                  placeholder="correo@dominio.com"
+                />
+              </div>
+              {errors.email && <small className="error-msg">{errors.email}</small>}
+            </label>
+
+            <label className="field">
+              <span>Username *</span>
               <div className="input-wrap">
                 <AtSign size={15} />
                 <input
                   type="text"
-                  name="identifier"
-                  value={form.identifier}
+                  name="username"
+                  value={form.username}
                   onChange={handleInputChange}
-                  placeholder="ejemplo@dominio.com o gamer123"
+                  placeholder="gamer123"
                 />
               </div>
-              {errors.identifier && <small className="error-msg">{errors.identifier}</small>}
-            </label>
-
-            <label className="field">
-              <span>Teléfono (opcional)</span>
-              <div className="input-wrap">
-                <Phone size={15} />
-                <input
-                  type="tel"
-                  name="telefono"
-                  value={form.telefono}
-                  onChange={handleInputChange}
-                  placeholder="Solo si deseas agregarlo"
-                />
-              </div>
+              {errors.username && <small className="error-msg">{errors.username}</small>}
             </label>
 
             {roleType === "admin" && (
@@ -308,7 +342,9 @@ export default function Registro() {
 
             <div className="registro-links">
               <button type="button" onClick={() => navigate("/login")}>Ir a login</button>
-              <button type="button" onClick={() => navigate("/")}> <Home size={13} /> Volver al inicio</button>
+              <button type="button" onClick={() => navigate("/")}>
+                <Home size={13} /> Volver al inicio
+              </button>
             </div>
           </form>
         </div>
