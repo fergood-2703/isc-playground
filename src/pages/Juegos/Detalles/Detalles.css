@@ -1,0 +1,369 @@
+/* ================================================
+   DETALLES DE JUEGO
+   ================================================ */
+
+.detalles-page {
+  min-height: 100vh;
+  padding-bottom: 60px;
+}
+
+.detalles-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 20px;
+}
+
+/* BOTÓN VOLVER */
+.btn-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  margin-bottom: 28px;
+  transition: all 0.2s;
+}
+
+.btn-volver:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+/* HERO IMAGE */
+.detalles-hero {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 28px;
+  height: 340px;
+}
+
+.detalles-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detalles-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(2, 6, 23, 0.95) 30%,
+    transparent 100%
+  );
+}
+
+.detalles-hero-info {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  right: 24px;
+}
+
+.detalles-hero-info h1 {
+  color: white;
+  font-size: 38px;
+  font-weight: 800;
+  margin: 0 0 10px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+.detalles-badges {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-purple {
+  background: rgba(139, 92, 246, 0.85);
+  color: white;
+}
+
+.badge-cyan {
+  background: rgba(6, 182, 212, 0.85);
+  color: white;
+}
+
+.badge-green {
+  background: rgba(34, 197, 94, 0.85);
+  color: white;
+}
+
+/* SECCIONES */
+.detalles-section {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.detalles-section h2 {
+  color: #8b5cf6;
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.detalles-section p {
+  color: #cbd5e1;
+  font-size: 14px;
+  line-height: 1.75;
+  margin: 0;
+}
+
+/* MECÁNICAS */
+.mecanicas-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.mecanica-item {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.mecanica-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.mecanica-item h4 {
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.mecanica-item p {
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* MODOS DE JUEGO */
+.modos-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.modo-item {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.modo-item h4 {
+  color: #06b6d4;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.modo-item ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.modo-item ul li {
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+/* TORNEO INFO */
+.torneo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.torneo-stat {
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}
+
+.torneo-stat span {
+  font-size: 22px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.torneo-stat strong {
+  color: white;
+  font-size: 16px;
+  display: block;
+}
+
+.torneo-stat p {
+  color: #64748b;
+  font-size: 11px;
+  margin: 2px 0 0;
+}
+
+/* FASES */
+.fases-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fase-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.fase-num {
+  background: linear-gradient(135deg, #8b5cf6, #06b6d4);
+  color: white;
+  font-size: 12px;
+  font-weight: 800;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fase-item h4 {
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 3px;
+}
+
+.fase-item p {
+  color: #94a3b8;
+  font-size: 12px;
+  margin: 0;
+}
+
+/* REQUISITOS */
+.requisitos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.requisito-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.requisito-item span:first-child {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+/* REGLAS */
+.reglas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.regla-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.regla-prohibida {
+  color: #f87171;
+}
+
+/* BOTÓN INSCRIBIRSE */
+.btn-inscribirse {
+  width: 100%;
+  background: linear-gradient(135deg, #8b5cf6, #06b6d4);
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  transition:
+    opacity 0.2s,
+    transform 0.1s;
+  letter-spacing: 0.3px;
+}
+
+.btn-inscribirse:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.btn-inscribirse:active {
+  transform: scale(0.99);
+}
+
+/* RESPONSIVE */
+@media (max-width: 640px) {
+  .detalles-hero {
+    height: 220px;
+  }
+
+  .detalles-hero-info h1 {
+    font-size: 26px;
+  }
+
+  .mecanicas-grid,
+  .modos-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .torneo-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .detalles-container {
+    padding: 20px 14px;
+  }
+}
