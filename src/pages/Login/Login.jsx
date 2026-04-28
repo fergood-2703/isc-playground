@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
@@ -14,15 +14,6 @@ export default function Login() {
     identifier: "",
     password: "",
   });
-
-  // ✅ SIN ERROR (no usamos Math.random directo en render)
-  const particles = useMemo(() => {
-    return Array.from({ length: 30 }, (_, i) => ({
-      id: i,
-      left: `${(i * 37) % 100}%`, // pseudo-random SIN Math.random
-      delay: `${(i * 0.7) % 10}s`,
-    }));
-  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -42,17 +33,6 @@ export default function Login() {
 
   return (
     <div className="login-page">
-
-      {/* partículas */}
-      {particles.map((p) => (
-        <span
-          key={p.id}
-          style={{
-            left: p.left,
-            animationDelay: p.delay,
-          }}
-        />
-      ))}
 
       {/* CARD */}
       <div className={`login-card ${activeInput ? "focus" : ""}`}>

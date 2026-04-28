@@ -58,35 +58,6 @@
   pointer-events: none;
 }
 
-/* partículas */
-.login-page span {
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  background: white;
-
-  opacity: 0.08;
-  /* 🔥 MÁS SUTIL */
-  border-radius: 50%;
-
-  animation: floatParticles 12s linear infinite;
-
-  pointer-events: none;
-  /* 🔥 IMPORTANTE */
-  z-index: 0;
-  /* 🔥 ATRÁS */
-}
-
-@keyframes floatParticles {
-  from {
-    transform: translateY(0);
-  }
-
-  to {
-    transform: translateY(-100vh);
-  }
-}
-
 /* =========================
    CARD
 ========================= */

@@ -39,18 +39,6 @@
   pointer-events: none;
 }
 
-.registro-page span {
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  background: white;
-  opacity: 0.08;
-  border-radius: 50%;
-  animation: floatParticles 12s linear infinite;
-  pointer-events: none;
-  z-index: 0;
-}
-
 @keyframes floatBg {
   from {
     transform: translate(0, 0);
@@ -61,15 +49,6 @@
   }
 }
 
-@keyframes floatParticles {
-  from {
-    transform: translateY(0);
-  }
-
-  to {
-    transform: translateY(-100vh);
-  }
-}
 
 .registro-card {
   width: 100%;
@@ -130,27 +109,42 @@
 }
 
 .role-switch {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(2, 6, 23, 0.65);
 }
 
+
 .role-switch button {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: #020617;
+  border: none;
+  background: transparent;
   color: #94a3b8;
   border-radius: 10px;
-  padding: 10px;
+  padding: 9px 16px;
   font-weight: 700;
   cursor: pointer;
-  transition: 0.3s;
+  transition: 0.25s;
+}
+
+.role-switch button:first-of-type {
+  border-right: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 0;
+  padding-right: 18px;
+}
+
+.role-switch button:last-of-type {
+  padding-left: 18px;
 }
 
 .role-switch button.active {
-  background: linear-gradient(135deg, #7c4dff, #00f0ff);
-  color: white;
-  border-color: transparent;
+  color: #e2e8f0;
+  background: linear-gradient(135deg, rgba(124, 77, 255, 0.2), rgba(0, 240, 255, 0.15));
 }
 
 .registro-alert {
