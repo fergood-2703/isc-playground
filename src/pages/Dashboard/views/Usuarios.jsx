@@ -2,6 +2,8 @@ import { useState } from "react";
 import "./Usuarios.css";
 
 export default function Usuarios() {
+
+
   const [users, setUsers] = useState([
     { id: 1, nombre: "Fernando", username: "fergood", puntos: 120, partidas: 8 },
     { id: 2, nombre: "Carlos", username: "carlitos", puntos: 90, partidas: 6 },
