@@ -99,6 +99,14 @@
   width: 100%;
 }
 
+
+.nav-right a.active {
+  color: #fff;
+}
+
+.nav-right a.active::after {
+  width: 100%;
+}
 /* BOTÓN LOGIN */
 .btn-login {
   padding: 8px 18px;

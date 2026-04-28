@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import "./Navbar.css";
 import logo from "../../assets/images/logo-isc.png";
 
@@ -17,11 +17,19 @@ export default function Navbar() {
 
       {/* LINKS DESKTOP */}
       <div className={`nav-right ${open ? "active" : ""}`}>
-        <a href="#">Inicio</a>
-        <a href="#">Juegos</a>
-        <a href="#">Ranking</a>
-        <a href="#">About Us</a>
-        <button className="btn-login" onClick={() => navigate("/login")}>
+        <NavLink to="/" onClick={() => setOpen(false)}>
+          Inicio
+        </NavLink>
+        <NavLink to="/juegos" onClick={() => setOpen(false)}>
+          Juegos
+        </NavLink>
+        <NavLink to="/admin/ranking" onClick={() => setOpen(false)}>
+          Ranking
+        </NavLink>
+        <NavLink to="/" onClick={() => setOpen(false)}>
+          About Us
+        </NavLink>
+        <button className="btn-login" onClick={() => { setOpen(false); navigate("/login"); }}>
           Login
         </button>
       </div>
