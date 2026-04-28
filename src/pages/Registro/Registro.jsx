@@ -167,6 +167,8 @@ export default function Registro() {
           <div className="role-switch" role="tablist" aria-label="Tipo de registro">
             <button
               type="button"
+              role="tab"
+              aria-selected={roleType === "normal"}
               className={roleType === "normal" ? "active" : ""}
               onClick={() => {
                 setRoleType("normal");
@@ -175,8 +177,13 @@ export default function Registro() {
             >
               Usuarios
             </button>
+            <span className="role-divider" aria-hidden="true">
+              |
+            </span>
             <button
               type="button"
+              role="tab"
+              aria-selected={roleType === "admin"}
               className={roleType === "admin" ? "active" : ""}
               onClick={() => setRoleType("admin")}
             >
@@ -323,8 +330,10 @@ export default function Registro() {
             </button>
 
             <div className="registro-links">
-              <button type="button" onClick={() => navigate("/login")}>Ir a login</button>
-              <button type="button" onClick={() => navigate("/")}>
+              <button type="button" className="link-btn" onClick={() => navigate("/login")}>
+                Ir a login
+              </button>
+              <button type="button" className="link-btn ghost" onClick={() => navigate("/")}>
                 <Home size={13} /> Volver al inicio
               </button>
             </div>

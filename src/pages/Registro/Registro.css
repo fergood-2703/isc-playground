@@ -112,9 +112,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 0;
   margin-bottom: 18px;
-  padding: 6px;
+  padding: 8px 10px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(2, 6, 23, 0.65);
@@ -125,26 +125,38 @@
   border: none;
   background: transparent;
   color: #94a3b8;
-  border-radius: 10px;
-  padding: 9px 16px;
+  border-radius: 999px;
+  padding: 9px 18px;
   font-weight: 700;
   cursor: pointer;
-  transition: 0.25s;
+  transition: 0.25s ease;
+  min-width: 170px;
 }
 
-.role-switch button:first-of-type {
-  border-right: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 0;
-  padding-right: 18px;
-}
-
-.role-switch button:last-of-type {
-  padding-left: 18px;
+.role-divider {
+  color: rgba(148, 163, 184, 0.5);
+  margin: 0 8px;
+  font-weight: 500;
+  transition: 0.25s ease;
 }
 
 .role-switch button.active {
-  color: #e2e8f0;
-  background: linear-gradient(135deg, rgba(124, 77, 255, 0.2), rgba(0, 240, 255, 0.15));
+  color: #f8fafc;
+  background: linear-gradient(135deg, rgba(124, 77, 255, 0.22), rgba(0, 240, 255, 0.16));
+  box-shadow:
+    0 0 0 1px rgba(124, 77, 255, 0.45),
+    0 0 22px rgba(124, 77, 255, 0.28),
+    0 0 32px rgba(0, 240, 255, 0.16);
+}
+
+.role-switch:has(button:first-child.active) .role-divider {
+  color: rgba(0, 240, 255, 0.75);
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+.role-switch:has(button:last-child.active) .role-divider {
+  color: rgba(124, 77, 255, 0.85);
+  text-shadow: 0 0 10px rgba(124, 77, 255, 0.6);
 }
 
 .registro-alert {
@@ -267,23 +279,43 @@
 
 .registro-links {
   margin-top: 8px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
 }
 
 .registro-links button {
-  border: none;
   background: transparent;
-  color: #cbd5e1;
-  font-weight: 600;
+  border: none;
+  color: #94a3b8;
+  font-size: 13px;
   cursor: pointer;
+  transition: 0.25s;
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  padding: 0;
+}
+
+.registro-links .link-btn::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 0%;
+  height: 2px;
+  background: linear-gradient(90deg, #7c4dff, #00f0ff);
+  transition: 0.3s;
+}
+
+.registro-links .link-btn:hover::after {
+  width: 100%;
+}
+
+.registro-links .link-btn.ghost {
+  color: #64748b;
 }
 
 .spin {
@@ -299,5 +331,17 @@
 @media (max-width: 700px) {
   .input-grid.two {
     grid-template-columns: 1fr;
+  }
+
+  .role-switch button {
+    min-width: 135px;
+  }
+}
+
+@media (max-width: 480px) {
+  .registro-links {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 }
