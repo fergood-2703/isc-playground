@@ -17,16 +17,16 @@ export default function Navbar() {
 
       {/* LINKS DESKTOP */}
       <div className={`nav-right ${open ? "active" : ""}`}>
-        <NavLink to="/" onClick={() => setOpen(false)}>
+        <NavLink to="/" end onClick={() => setOpen(false)}>
           Inicio
         </NavLink>
         <NavLink to="/juegos" onClick={() => setOpen(false)}>
           Juegos
         </NavLink>
-        <NavLink to="/admin/ranking" onClick={() => setOpen(false)}>
+        <NavLink to="/ranking" onClick={() => setOpen(false)}>
           Ranking
         </NavLink>
-        <NavLink to="/" onClick={() => setOpen(false)}>
+        <NavLink to="/about" onClick={() => setOpen(false)}>
           About Us
         </NavLink>
         <button className="btn-login" onClick={() => { setOpen(false); navigate("/login"); }}>

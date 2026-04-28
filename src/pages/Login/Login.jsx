@@ -35,6 +35,7 @@ export default function Login() {
     e.preventDefault();
 
     console.log(formData);
+    localStorage.setItem("isc_user", JSON.stringify({ identifier: formData.identifier }));
 
     navigate("/");
   };
