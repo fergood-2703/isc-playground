@@ -2,37 +2,12 @@ import { useNavigate } from "react-router-dom"; // 👈 agregado
 import Navbar from "../../components/Navbar/Navbar";
 import StatsChart from "../../components/StatsChart/StatsChart";
 import logo from "../../assets/images/playground-logo.png";
-import cs from "../../assets/images/juegos/cs.jpg";
-import bombsquad from "../../assets/images/juegos/bombsquad.jpg";
-import soulknight from "../../assets/images/juegos/soulknight.jpg";
+import { games } from "../../data/games";
 import "./Home.css";
 
 export default function Home() {
   const navigate = useNavigate(); // 👈 agregado
 
-  const games = [
-    {
-      id: 1,
-      nombre: "Counter Strike",
-      jugadores: 11,
-      desc: "FPS táctico por equipos",
-      img: cs,
-    },
-    {
-      id: 2,
-      nombre: "BombSquad",
-      jugadores: 10,
-      desc: "Acción caótica con bombas",
-      img: bombsquad,
-    },
-    {
-      id: 3,
-      nombre: "Soul Knight",
-      jugadores: 8,
-      desc: "Roguelike de mazmorras",
-      img: soulknight,
-    },
-  ];
 
   const playersData = games.map((g) => ({
     name: g.nombre,

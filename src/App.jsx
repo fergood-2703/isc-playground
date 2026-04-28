@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home/Home";
 import Login from "./pages/Login/Login";
 import Registro from "./pages/Registro/Registro";
+import JuegosPage from "./pages/Juegos/Juegos";
 
 // detalles juego
 import Detalles from "./pages/Juegos/Detalles/Detalles";
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
+        <Route path="/juegos" element={<JuegosPage />} />
 
         {/* detalles */}
         <Route path="/juego/:id" element={<Detalles />} />
