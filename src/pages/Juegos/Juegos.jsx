@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar/Navbar";
-import { games } from "../../data/games";
+import { useApp } from "../../context/AppContext";
 import "./Juegos.css";
 
 export default function JuegosPage() {
   const navigate = useNavigate();
+  const { gameConfigs, rankingsByGame, registerToGame, getRegistration, getRegisteredPlayers } = useApp();
 
   return (
     <div className="juegos-page">
@@ -22,38 +23,42 @@ export default function JuegosPage() {
         <section>
           <h2 className="title-gamer">JUEGOS DISPONIBLES</h2>
           <div className="grid grid-3">
-            {games.map((game) => (
-              <article key={game.id} className="game-card game-card--juegos">
-                <div className="game-img">
-                  <img src={game.img} alt={game.nombre} />
-                  <div className="overlay" />
-                </div>
-
-                <div className="game-info">
-                  <h3>{game.nombre}</h3>
-                  <p>{game.desc}</p>
-
-                  <div className="game-tags">
-                    {game.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="game-tag"
-                        style={{ borderColor: game.color }}
-                      >
-                        {tag}
-                      </span>
-                    ))}
+            {gameConfigs.map((game) => {
+              const registration = getRegistration(game.id);
+              const rankingLeader = rankingsByGame[game.id]?.[0];
+              return (
+                <article key={game.id} className="game-card game-card--juegos">
+                  <div className="game-img">
+                    <img src={game.image} alt={game.name} />
+                    <div className="overlay" />
                   </div>
 
-                  <button
-                    className="btn-primary"
-                    onClick={() => navigate(`/juego/${game.id}`)}
-                  >
-                    Ver información del juego →
-                  </button>
-                </div>
-              </article>
-            ))}
+                  <div className="game-info">
+                    <div className="game-card-heading">
+                      <h3>{game.name}</h3>
+                      <span>{getRegisteredPlayers(game.id).length} inscritos</span>
+                    </div>
+                    <p>{game.description}</p>
+
+                    <div className="game-tags">
+                      {[game.format, game.teamSize, game.status].map((tag) => (
+                        <span key={tag} className="game-tag" style={{ borderColor: game.accent }}>{tag}</span>
+                      ))}
+                    </div>
+                    <div className="game-mini-meta">
+                      <span>Ranking: @{rankingLeader?.player.username ?? "pendiente"}</span>
+                      <span>{registration?.status ?? "abierto"}</span>
+                    </div>
+
+                    <div className="game-actions-row">
+                      <button className={registration ? "btn-secondary is-registered" : "btn-primary"} onClick={() => registerToGame(game.id)}>{registration ? "✓ Inscrito" : "Inscribirse"}</button>
+                      <button className="btn-secondary" onClick={() => navigate("/ranking")}>Ver ranking</button>
+                      <button className="btn-secondary" onClick={() => navigate(`/juego/${game.legacyId}`)}>Ver detalles</button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
       </main>

@@ -24,3 +24,23 @@
 .roster-list div span { grid-column: 1; }
 .roster-list button { grid-row: 1 / 3; grid-column: 2; width: 32px; height: 32px; border: 0; border-radius: 10px; background: rgba(239, 68, 68, .15); color: #fecaca; cursor: pointer; }
 @media (max-width: 700px) { .availability-strip { grid-template-columns: 1fr; } }
+.enrollment-admin-hero { display: grid; grid-template-columns: .75fr 1.25fr; gap: 18px; align-items: center; border-color: color-mix(in srgb, var(--accent), transparent 68%); background: radial-gradient(circle at top left, color-mix(in srgb, var(--accent), transparent 78%), rgba(15, 23, 42, .88)); }
+.enrollment-admin-hero h3 { margin: 4px 0; font-size: clamp(28px, 4vw, 44px); }
+.enrollment-admin-hero p { color: #cbd5e1; margin: 0; }
+.availability-strip.compact { padding: 0; background: transparent; border: 0; box-shadow: none; grid-template-columns: repeat(4, 1fr); }
+.team-builder-layout { display: grid; grid-template-columns: minmax(320px, .95fr) minmax(300px, .55fr); gap: 18px; align-items: start; }
+.search-box { margin-bottom: 14px; }
+.registered-admin-list { max-height: 430px; overflow: auto; display: grid; gap: 10px; padding-right: 4px; }
+.registered-admin-list button { width: 100%; text-align: left; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 13px; border-radius: 16px; border: 1px solid rgba(148, 163, 184, .12); background: rgba(2, 6, 23, .52); color: white; cursor: pointer; }
+.registered-admin-list button:hover, .registered-admin-list button.selected { border-color: rgba(34, 211, 238, .5); background: rgba(6, 182, 212, .12); }
+.registered-admin-list button.busy { opacity: .58; cursor: not-allowed; }
+.registered-admin-list strong, .registered-admin-list span { display: block; }
+.registered-admin-list span { color: #94a3b8; font-size: 12px; }
+.registered-admin-list em { grid-row: 1 / 3; grid-column: 2; align-self: center; color: #67e8f9; font-style: normal; font-size: 11px; font-weight: 950; text-transform: uppercase; }
+.selection-preview { min-height: 92px; display: flex; align-content: flex-start; gap: 8px; flex-wrap: wrap; padding: 12px; border-radius: 16px; background: rgba(2, 6, 23, .5); border: 1px dashed rgba(148, 163, 184, .22); }
+.selection-preview span { padding: 7px 10px; border-radius: 999px; color: #cffafe; background: rgba(6, 182, 212, .14); border: 1px solid rgba(34, 211, 238, .22); font-size: 12px; font-weight: 900; }
+.selection-preview p { color: #94a3b8; margin: 0; }
+.quick-move-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.quick-move-list button { display: inline-flex; align-items: center; gap: 5px; border: 1px solid rgba(34, 211, 238, .2); color: #cffafe; background: rgba(6, 182, 212, .1); border-radius: 999px; padding: 7px 9px; cursor: pointer; }
+.start-match-hint { width: 100%; margin-top: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+@media (max-width: 980px) { .enrollment-admin-hero, .team-builder-layout, .availability-strip.compact { grid-template-columns: 1fr; } }

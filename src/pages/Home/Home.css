@@ -62,3 +62,11 @@
 .tournament-card p { color: #cbd5e1; line-height: 1.6; }
 @media (max-width: 900px) { .hero, .command-center, .insights-grid { grid-template-columns: 1fr; flex-direction: column; text-align: left; } .live-strip { grid-template-columns: 1fr; } .hero-right { text-align: center; } .feed-item { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .hero { padding: 30px 20px; } .hero-actions { flex-direction: column; } .hero-actions button { width: 100%; } .hero-right img { width: 190px; } }
+.game-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.game-card-heading span { color: #67e8f9; font-size: 12px; font-weight: 950; white-space: nowrap; }
+.game-mini-meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.game-mini-meta span { padding: 6px 9px; border-radius: 999px; background: rgba(15, 23, 42, .84); border: 1px solid rgba(148, 163, 184, .14); color: #cbd5e1; font-size: 11px; font-weight: 800; }
+.game-actions-row { display: grid; grid-template-columns: 1.1fr .9fr .9fr; gap: 8px; }
+.game-actions-row button { width: 100%; padding-inline: 10px; }
+.is-registered { border-color: rgba(34, 197, 94, .42) !important; color: #bbf7d0 !important; background: rgba(22, 163, 74, .16) !important; }
+@media (max-width: 700px) { .game-actions-row { grid-template-columns: 1fr; } }
