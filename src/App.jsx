@@ -14,6 +14,7 @@ import Detalles from "./pages/Juegos/Detalles/Detalles";
 // dashboard
 import DashboardLayout from "./pages/Dashboard/DashboardLayout";
 import Juegos from "./pages/Dashboard/views/Juegos";
+import Partidas from "./pages/Dashboard/views/Partidas";
 import Equipos from "./pages/Dashboard/views/Equipos";
 import Usuarios from "./pages/Dashboard/views/Usuarios";
 import Ranking from "./pages/Dashboard/views/Ranking";
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/admin" element={<DashboardLayout />}>
           <Route index element={<DashboardHome />} />
           <Route path="juegos" element={<Juegos />} />
+          <Route path="partidas" element={<Partidas />} />
           <Route path="usuarios" element={<Usuarios />} />
           <Route path="equipos" element={<Equipos />} />
           <Route path="ranking" element={<Ranking />} />

@@ -1,267 +1,160 @@
 import { useMemo, useState } from "react";
-import { Flame, Plus, Save, Timer, Trophy } from "lucide-react";
+import { ImagePlus, Pencil, Plus, Power, Save, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useApp } from "../../../context/AppContext";
-import { getMatchLeader, getMetricLabel } from "../../../utils/rankingEngine";
 import "./Juegos.css";
 
-const statusClass = (status) => (status === "En curso" ? "live" : status === "Finalizada" ? "done" : "");
+const emptyGame = {
+  name: "",
+  shortName: "",
+  image: "",
+  accent: "#06b6d4",
+  teamSize: "4 jugadores",
+  duration: "Configurable",
+  format: "Competitivo",
+  status: "Activo",
+  description: "",
+  pointFormula: "victorias*100 + kills*5",
+  maxPlayers: "8",
+  matchType: "Equipos temporales",
+  rulesText: "Mayor puntuación individual\nFair play obligatorio",
+  metricsText: "points:Puntos\nkills:Kills",
+  mapsText: "Arena principal",
+};
+
+const parseLines = (value, mapper) =>
+  value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map(mapper);
+
+const toForm = (game) => ({
+  name: game.name,
+  shortName: game.shortName,
+  image: game.image,
+  accent: game.accent,
+  teamSize: game.teamSize,
+  duration: game.duration,
+  format: game.format,
+  status: game.status,
+  description: game.description,
+  pointFormula: game.pointFormula,
+  maxPlayers: game.maxPlayers || game.teamSize,
+  matchType: game.matchType || game.format,
+  rulesText: game.scoringRules?.map((rule) => rule.label).join("\n") || "",
+  metricsText: game.metrics?.map((metric) => `${metric.key}:${metric.label}`).join("\n") || "",
+  mapsText: game.maps?.join("\n") || "",
+});
+
+const buildPayload = (form) => ({
+  ...form,
+  shortName: form.shortName || form.name,
+  scoringRules: parseLines(form.rulesText, (label, index) => ({ key: `rule-${index + 1}`, label, direction: "desc" })),
+  metrics: parseLines(form.metricsText, (line) => {
+    const [key, label] = line.split(":");
+    return { key: (key || label).trim().toLowerCase().replaceAll(" ", "-"), label: (label || key).trim(), type: "number", defaultValue: 0 };
+  }),
+  maps: parseLines(form.mapsText, (line) => line),
+  visualMetrics: parseLines(form.metricsText, (line) => line.split(":")[0].trim()).slice(0, 4),
+  winCondition: `Gana el jugador con mejor rendimiento según: ${form.pointFormula}.`,
+});
 
 export default function Juegos() {
-  const {
-    gameConfigs,
-    tournamentPhases,
-    matchStatuses,
-    players,
-    teams,
-    matches,
-    rankingsByGame,
-    createMatch,
-    updateMatchResult,
-    updateMatchStatus,
-    updateLiveRound,
-  } = useApp();
-  const [selectedGameId, setSelectedGameId] = useState(gameConfigs[0].id);
-  const [matchForm, setMatchForm] = useState({ phaseType: tournamentPhases[0], stage: "Clasificatoria 02", map: "", duration: 0, scheduledAt: "2026-05-12 15:00", teamA: "", teamB: "" });
-  const [draftStats, setDraftStats] = useState({});
+  const { gameConfigs, matches, createGame, updateGame, deleteGame, toggleGameStatus } = useApp();
+  const [selectedId, setSelectedId] = useState(gameConfigs[0]?.id);
+  const [form, setForm] = useState(() => toForm(gameConfigs[0]));
+  const selectedGame = gameConfigs.find((game) => game.id === selectedId) ?? gameConfigs[0];
 
-  const selectedGame = gameConfigs.find((game) => game.id === selectedGameId);
-  const gameTeams = teams.filter((team) => team.gameId === selectedGameId && team.status === "Activo");
-  const gameMatches = matches.filter((match) => match.gameId === selectedGameId);
-  const ranking = rankingsByGame[selectedGameId] ?? [];
-  const playersById = useMemo(() => Object.fromEntries(players.map((player) => [player.id, player])), [players]);
-
-  const liveMatch = useMemo(
-    () => gameMatches.find((match) => match.status === "En curso") ?? gameMatches[0],
-    [gameMatches]
+  const gameUsage = useMemo(
+    () => Object.fromEntries(gameConfigs.map((game) => [game.id, matches.filter((match) => match.gameId === game.id).length])),
+    [gameConfigs, matches]
   );
 
-  const handleCreateMatch = (event) => {
+  const selectGame = (game) => {
+    setSelectedId(game.id);
+    setForm(toForm(game));
+  };
+
+  const handleSubmit = (event) => {
     event.preventDefault();
-    if (!matchForm.teamA || !matchForm.teamB || matchForm.teamA === matchForm.teamB) return;
-
-    createMatch({
-      gameId: selectedGameId,
-      phaseType: matchForm.phaseType,
-      stage: matchForm.stage,
-      map: matchForm.map || selectedGame.maps?.[0] || "Arena oficial",
-      scheduledAt: matchForm.scheduledAt,
-      duration: Number(matchForm.duration),
-      teamIds: [matchForm.teamA, matchForm.teamB],
-    });
-    setMatchForm((prev) => ({ ...prev, map: "", teamA: "", teamB: "" }));
+    if (!form.name.trim()) return;
+    if (selectedId === "new") {
+      createGame(buildPayload({ ...form, id: form.name.toLowerCase().replaceAll(" ", "-") }));
+    } else {
+      updateGame(selectedId, buildPayload(form));
+    }
   };
 
-  const handleStatChange = (matchId, playerId, key, value) => {
-    setDraftStats((prev) => ({
-      ...prev,
-      [matchId]: {
-        ...(prev[matchId] ?? {}),
-        [playerId]: {
-          ...(prev[matchId]?.[playerId] ?? {}),
-          [key]: Number(value),
-        },
-      },
-    }));
+  const startNew = () => {
+    setSelectedId("new");
+    setForm(emptyGame);
   };
-
-  const handleMetaChange = (matchId, playerId, key, value) => {
-    setDraftStats((prev) => ({
-      ...prev,
-      [matchId]: {
-        ...(prev[matchId] ?? {}),
-        [playerId]: {
-          ...(prev[matchId]?.[playerId] ?? {}),
-          [key]: key === "won" ? value : Number(value),
-        },
-      },
-    }));
-  };
-
-  const findPlayerResult = (match, playerId) => match.playerResults?.find((result) => result.playerId === playerId);
-
-  const saveStats = (match, playerId) => {
-    const existing = findPlayerResult(match, playerId);
-    const draft = draftStats[match.id]?.[playerId] ?? {};
-    const stats = selectedGame.metrics.reduce((acc, metric) => ({
-      ...acc,
-      [metric.key]: draft[metric.key] ?? existing?.stats?.[metric.key] ?? metric.defaultValue ?? 0,
-    }), {});
-    updateMatchResult(match.id, playerId, stats, draft.points ?? existing?.points ?? 0, draft.won ?? existing?.won ?? false);
-  };
-
-  const metricHighlight = selectedGame.visualMetrics.slice(0, 4);
 
   return (
-    <div className="admin-page games-admin">
+    <div className="admin-page games-catalog">
       <div className="page-head">
         <div>
-          <span className="eyebrow">Partidas y fases</span>
-          <h2>Flujo real de administración</h2>
-          <p>Selecciona juego, crea partida, define fase, asigna equipos temporales, inicia, registra puntos individuales y actualiza el ranking por usuario.</p>
+          <span className="eyebrow">Juegos permanentes</span>
+          <h2>Catálogo gamer de la plataforma</h2>
+          <p>Administra juegos base como Bomb Squad, Counter Strike, Soul Knight y futuros títulos. Las partidas temporales viven en una sección separada.</p>
         </div>
+        <button className="primary-btn premium-action" onClick={startNew}><Plus size={18} /> Crear juego</button>
       </div>
 
-      <div className="game-switcher">
-        {gameConfigs.map((game) => (
-          <button className={game.id === selectedGameId ? "active" : ""} key={game.id} onClick={() => setSelectedGameId(game.id)} style={{ "--accent": game.accent }}>
-            <img src={game.image} alt={game.name} />
-            <span>{game.name}</span>
-          </button>
-        ))}
-      </div>
-
-      <section className="panel-card game-hero" style={{ "--accent": selectedGame.accent }}>
-        <img src={selectedGame.image} alt={selectedGame.name} />
-        <div>
-          <span className="eyebrow">{selectedGame.format}</span>
-          <h3>{selectedGame.name}</h3>
-          <p>{selectedGame.description}</p>
-          <div className="rule-list">
-            <span className="pill">{selectedGame.pointFormula}</span>
-            {selectedGame.scoringRules.map((rule, index) => <span className="pill" key={rule.key}>{index + 1}. {rule.label}</span>)}
-          </div>
-        </div>
-        <div className="hero-meta">
-          <span><Timer size={16} /> {selectedGame.duration}</span>
-          <span><Trophy size={16} /> equipos temporales</span>
-          <strong>{selectedGame.status}</strong>
-        </div>
-      </section>
-
-      <div className="grid-2">
-        <section className="panel-card">
-          <div className="section-title">
-            <div>
-              <span className="eyebrow">Crear partida</span>
-              <h3>Fase + equipos temporales</h3>
-            </div>
-            <Plus size={20} />
-          </div>
-          <form className="match-form" onSubmit={handleCreateMatch}>
-            <label>Fase / tipo
-              <select value={matchForm.phaseType} onChange={(e) => setMatchForm({ ...matchForm, phaseType: e.target.value })}>
-                {tournamentPhases.map((phase) => <option key={phase} value={phase}>{phase}</option>)}
-              </select>
-            </label>
-            <label>Ronda / nombre
-              <input value={matchForm.stage} onChange={(e) => setMatchForm({ ...matchForm, stage: e.target.value })} />
-            </label>
-            <label>Mapa / seed / arena
-              <input value={matchForm.map} placeholder={selectedGame.maps?.[0] ?? "Arena oficial"} onChange={(e) => setMatchForm({ ...matchForm, map: e.target.value })} />
-            </label>
-            <label>Duración estimada (min)
-              <input type="number" value={matchForm.duration} onChange={(e) => setMatchForm({ ...matchForm, duration: e.target.value })} />
-            </label>
-            <label>Horario
-              <input value={matchForm.scheduledAt} onChange={(e) => setMatchForm({ ...matchForm, scheduledAt: e.target.value })} />
-            </label>
-            <label>Equipo temporal A
-              <select value={matchForm.teamA} onChange={(e) => setMatchForm({ ...matchForm, teamA: e.target.value })}>
-                <option value="">Seleccionar</option>
-                {gameTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
-              </select>
-            </label>
-            <label>Equipo temporal B
-              <select value={matchForm.teamB} onChange={(e) => setMatchForm({ ...matchForm, teamB: e.target.value })}>
-                <option value="">Seleccionar</option>
-                {gameTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
-              </select>
-            </label>
-            <button className="primary-btn">Crear partida</button>
-          </form>
-        </section>
-
-        <section className="panel-card live-scoreboard">
-          <div className="section-title">
-            <div>
-              <span className="eyebrow">Marcador individual</span>
-              <h3>{liveMatch?.stage ?? "Sin partida"}</h3>
-            </div>
-            <Flame size={20} />
-          </div>
-          {liveMatch ? liveMatch.playerIds.map((playerId) => {
-            const primaryMetric = selectedGame.scoringRules[0].key;
-            const result = findPlayerResult(liveMatch, playerId);
-            return (
-              <div className="score-row" key={playerId}>
-                <strong>@</strong>
-                <span>{playersById[playerId]?.username}</span>
-                <button onClick={() => updateLiveRound(liveMatch.id, playerId, primaryMetric, -1)}>-</button>
-                <b>{result?.stats?.[primaryMetric] ?? 0}</b>
-                <button onClick={() => updateLiveRound(liveMatch.id, playerId, primaryMetric, 1)}>+</button>
-                <small>{getMetricLabel(selectedGame, primaryMetric)}</small>
+      <section className="catalog-grid">
+        <div className="game-library">
+          {gameConfigs.map((game) => (
+            <article key={game.id} className={`library-card ${selectedId === game.id ? "active" : ""}`} onClick={() => selectGame(game)} style={{ "--accent": game.accent }}>
+              <img src={game.image} alt={game.name} />
+              <div>
+                <span>{game.status}</span>
+                <h3>{game.name}</h3>
+                <p>{game.format} · {game.teamSize}</p>
               </div>
-            );
-          }) : <p>No hay partidas creadas para este juego.</p>}
-        </section>
-      </div>
-
-      {selectedGame.id === "soul-knight" && (
-        <section className="soul-visual panel-card">
-          <div className="section-title"><div><span className="eyebrow">Soul Knight pro stats</span><h3>Cards por usuario líder</h3></div></div>
-          <div className="soul-grid">
-            {metricHighlight.map((metric) => {
-              const leader = ranking[0];
-              const maxValue = Math.max(...ranking.map((row) => Number(row.totals[metric] ?? 0)), 1);
-              return (
-                <div className="soul-card" key={metric}>
-                  <span>{getMetricLabel(selectedGame, metric)}</span>
-                  <strong>{leader?.totals[metric] ?? 0}</strong>
-                  <div className="bar"><i style={{ width: `${Math.min(100, ((leader?.totals[metric] ?? 0) / maxValue) * 100)}%` }} /></div>
-                  <small>Líder: @{leader?.player.username ?? "pendiente"}</small>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      <section className="panel-card">
-        <div className="section-title"><div><span className="eyebrow">Historial</span><h3>Estados, puntuaciones e historial</h3></div></div>
-        <div className="match-admin-list">
-          {gameMatches.map((match) => {
-            const leader = getMatchLeader(match, selectedGame);
-            return (
-              <article className="match-admin-card" key={match.id}>
-                <header>
-                  <div><strong>{match.stage}</strong><span>{match.phaseType} · {match.map} · {match.duration} min · {match.scheduledAt}</span></div>
-                  <label className={`pill ${statusClass(match.status)}`}>Estado
-                    <select value={match.status} onChange={(event) => updateMatchStatus(match.id, event.target.value)}>
-                      {matchStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
-                    </select>
-                  </label>
-                </header>
-                <div className="result-grid individual-results">
-                  {match.playerIds.map((playerId) => {
-                    const result = findPlayerResult(match, playerId);
-                    return (
-                      <div className={`result-editor ${leader?.playerId === playerId ? "winner" : ""}`} key={playerId}>
-                        <h4>{playersById[playerId]?.name} <small>@{playersById[playerId]?.username}</small></h4>
-                        <div className="metric-inputs">
-                          <label>Puntos
-                            <input type="number" value={draftStats[match.id]?.[playerId]?.points ?? result?.points ?? 0} onChange={(e) => handleMetaChange(match.id, playerId, "points", e.target.value)} />
-                          </label>
-                          <label>Victoria
-                            <select value={String(draftStats[match.id]?.[playerId]?.won ?? result?.won ?? false)} onChange={(e) => handleMetaChange(match.id, playerId, "won", e.target.value === "true")}>
-                              <option value="false">No</option>
-                              <option value="true">Sí</option>
-                            </select>
-                          </label>
-                          {selectedGame.metrics.map((metric) => (
-                            <label key={metric.key}>{metric.label}
-                              <input type="number" value={draftStats[match.id]?.[playerId]?.[metric.key] ?? result?.stats?.[metric.key] ?? metric.defaultValue ?? 0} onChange={(e) => handleStatChange(match.id, playerId, metric.key, e.target.value)} />
-                            </label>
-                          ))}
-                        </div>
-                        <button className="ghost-btn" onClick={() => saveStats(match, playerId)}><Save size={15} /> Guardar usuario</button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </article>
-            );
-          })}
+              <strong>{gameUsage[game.id]} partidas</strong>
+            </article>
+          ))}
         </div>
+
+        <form className="panel-card catalog-editor" onSubmit={handleSubmit} style={{ "--accent": form.accent }}>
+          <div className="editor-head">
+            <div>
+              <span className="eyebrow">{selectedId === "new" ? "Nuevo juego" : "Editar juego"}</span>
+              <h3>{form.name || "Juego sin nombre"}</h3>
+            </div>
+            <div className="editor-actions">
+              {selectedGame && selectedId !== "new" && <button type="button" className="ghost-btn" onClick={() => toggleGameStatus(selectedId)}><Power size={16} /> Activar/desactivar</button>}
+              {selectedGame && selectedId !== "new" && <button type="button" className="danger-btn" onClick={() => deleteGame(selectedId)}><Trash2 size={16} /> Eliminar</button>}
+            </div>
+          </div>
+
+          <div className="banner-drop">
+            {form.image ? <img src={form.image} alt="Banner del juego" /> : <ImagePlus size={34} />}
+            <div><strong>Imagen / banner</strong><span>URL o asset importado del juego permanente.</span></div>
+          </div>
+
+          <div className="editor-fields">
+            <label>Nombre<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+            <label>Short name<input value={form.shortName} onChange={(e) => setForm({ ...form, shortName: e.target.value })} /></label>
+            <label>Banner URL<input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} /></label>
+            <label>Color neon<input type="color" value={form.accent} onChange={(e) => setForm({ ...form, accent: e.target.value })} /></label>
+            <label>Jugadores máximos<input value={form.maxPlayers} onChange={(e) => setForm({ ...form, maxPlayers: e.target.value, teamSize: e.target.value })} /></label>
+            <label>Tipo de partida<input value={form.matchType} onChange={(e) => setForm({ ...form, matchType: e.target.value, format: e.target.value })} /></label>
+            <label>Duración<input value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} /></label>
+            <label>Estado<select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}><option>Activo</option><option>Desactivado</option><option>En bracket</option><option>Clasificatorio</option></select></label>
+          </div>
+
+          <label>Descripción<textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
+          <label>Sistema de puntuación<input value={form.pointFormula} onChange={(e) => setForm({ ...form, pointFormula: e.target.value })} /></label>
+
+          <div className="editor-fields advanced">
+            <label><SlidersHorizontal size={15} /> Reglas<textarea value={form.rulesText} onChange={(e) => setForm({ ...form, rulesText: e.target.value })} /></label>
+            <label><Pencil size={15} /> Métricas key:label<textarea value={form.metricsText} onChange={(e) => setForm({ ...form, metricsText: e.target.value })} /></label>
+            <label>Mapas / modos<textarea value={form.mapsText} onChange={(e) => setForm({ ...form, mapsText: e.target.value })} /></label>
+          </div>
+
+          <button className="primary-btn premium-action"><Save size={18} /> Guardar juego permanente</button>
+        </form>
       </section>
     </div>
   );

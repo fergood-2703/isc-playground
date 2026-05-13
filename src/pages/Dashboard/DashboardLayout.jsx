@@ -6,6 +6,7 @@ import logo from "../../assets/images/playground-logo.png";
 import {
   Activity,
   Gamepad2,
+  CalendarClock,
   LayoutDashboard,
   Menu,
   ShieldCheck,
@@ -17,12 +18,14 @@ import { useApp } from "../../context/AppContext";
 
 export default function DashboardLayout() {
   const { currentUser, matches } = useApp();
+  const activeUser = currentUser ?? { username: "guest", role: "Operador" };
   const [open, setOpen] = useState(true);
   const liveMatches = matches.filter((match) => match.status === "En curso").length;
 
   const menu = [
     { name: "Control", icon: <LayoutDashboard size={18} />, path: "/admin" },
-    { name: "Juegos & partidas", icon: <Gamepad2 size={18} />, path: "/admin/juegos" },
+    { name: "Juegos", icon: <Gamepad2 size={18} />, path: "/admin/juegos" },
+    { name: "Partidas", icon: <CalendarClock size={18} />, path: "/admin/partidas" },
     { name: "Equipos", icon: <Swords size={18} />, path: "/admin/equipos" },
     { name: "Rankings", icon: <Trophy size={18} />, path: "/admin/ranking" },
     { name: "Usuarios", icon: <Users size={18} />, path: "/admin/usuarios" },
@@ -76,8 +79,8 @@ export default function DashboardLayout() {
           <div className="user">
             <ShieldCheck size={16} />
             <div>
-              <strong>{currentUser.username}</strong>
-              <span>{currentUser.role}</span>
+              <strong>{activeUser.username}</strong>
+              <span>{activeUser.role}</span>
             </div>
           </div>
         </header>
