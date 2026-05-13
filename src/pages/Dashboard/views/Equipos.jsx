@@ -1,138 +1,175 @@
 import { useMemo, useState } from "react";
-import { Trash2, UserMinus, UserPlus } from "lucide-react";
+import { Play, Plus, Search, Trash2, UserMinus, UserPlus } from "lucide-react";
 import { useApp } from "../../../context/AppContext";
 import "./Equipos.css";
 
 export default function Equipos() {
-  const { gameConfigs, players, teams, createTeam, updateTeam, deleteTeam, assignPlayerToTeam, removePlayerFromTeam } = useApp();
-  const [form, setForm] = useState({ name: "", tag: "", gameId: gameConfigs[0].id, playerIds: [] });
-  const [assignment, setAssignment] = useState({ teamId: teams[0]?.id ?? "", playerId: players[0]?.id ?? "" });
+  const {
+    gameConfigs,
+    players,
+    teams,
+    matches,
+    createTeam,
+    updateTeam,
+    deleteTeam,
+    assignPlayerToTeam,
+    removePlayerFromTeam,
+    getRegisteredPlayers,
+  } = useApp();
+  const [selectedGameId, setSelectedGameId] = useState(gameConfigs[0].id);
+  const [search, setSearch] = useState("");
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState([]);
+  const [teamName, setTeamName] = useState("Equipo Alpha");
 
+  const selectedGame = gameConfigs.find((game) => game.id === selectedGameId) ?? gameConfigs[0];
+  const gameTeams = teams.filter((team) => team.gameId === selectedGameId);
+  const activeTeams = gameTeams.filter((team) => team.status === "Activo");
   const playersById = useMemo(() => Object.fromEntries(players.map((player) => [player.id, player])), [players]);
-  const activePlayerIds = useMemo(
-    () => new Set(teams.filter((team) => team.status === "Activo").flatMap((team) => team.playerIds)),
-    [teams]
+  const busyPlayerIds = useMemo(
+    () => new Set(activeTeams.flatMap((team) => team.playerIds)),
+    [activeTeams]
   );
-  const availablePlayers = players.filter((player) => !activePlayerIds.has(player.id));
+  const registeredPlayers = getRegisteredPlayers(selectedGameId);
+  const filteredPlayers = registeredPlayers.filter((player) =>
+    `${player.name} ${player.username}`.toLowerCase().includes(search.toLowerCase())
+  );
+  const availablePlayers = registeredPlayers.filter((player) => !busyPlayerIds.has(player.id));
+  const activeMatches = matches.filter((match) => match.gameId === selectedGameId && ["Pendiente", "En preparación", "En curso"].includes(match.status));
+
+  const togglePlayer = (playerId) => {
+    if (busyPlayerIds.has(playerId)) return;
+    setSelectedPlayerIds((prev) =>
+      prev.includes(playerId) ? prev.filter((id) => id !== playerId) : [...prev, playerId]
+    );
+  };
 
   const handleCreateTeam = (event) => {
     event.preventDefault();
-    if (!form.name || !form.gameId) return;
-    createTeam(form);
-    setForm({ name: "", tag: "", gameId: gameConfigs[0].id, playerIds: [] });
+    if (!teamName.trim()) return;
+    createTeam({ name: teamName, tag: teamName.slice(0, 3).toUpperCase(), gameId: selectedGameId, playerIds: selectedPlayerIds });
+    setTeamName("");
+    setSelectedPlayerIds([]);
   };
 
-  const handleAssign = (event) => {
-    event.preventDefault();
-    if (!assignment.teamId || !assignment.playerId) return;
-    assignPlayerToTeam(assignment.teamId, assignment.playerId);
+  const movePlayer = (teamId, playerId) => {
+    if (assignPlayerToTeam(teamId, playerId)) {
+      setSelectedPlayerIds((prev) => prev.filter((id) => id !== playerId));
+    }
   };
 
   return (
     <div className="admin-page teams-admin">
       <div className="page-head">
         <div>
-          <span className="eyebrow">Equipos temporales</span>
-          <h2>Agrupación rápida para partidas</h2>
-          <p>Los equipos son operativos, no competitivos permanentes. Un jugador solo puede estar en un equipo activo a la vez y queda disponible al cerrar la partida.</p>
+          <span className="eyebrow">Gestión por juego</span>
+          <h2>Equipos temporales desde inscritos</h2>
+          <p>El administrador ya no toma usuarios globales: primero selecciona el juego, revisa sus inscritos, arma equipos temporales y luego crea la partida por fase o ronda.</p>
         </div>
       </div>
 
-      <div className="availability-strip panel-card">
-        <div><strong>{availablePlayers.length}</strong><span>Disponibles</span></div>
-        <div><strong>{activePlayerIds.size}</strong><span>En equipo activo</span></div>
-        <div><strong>{teams.filter((team) => team.status === "Activo").length}</strong><span>Equipos activos</span></div>
+      <div className="game-switcher">
+        {gameConfigs.map((game) => (
+          <button className={game.id === selectedGameId ? "active" : ""} key={game.id} onClick={() => { setSelectedGameId(game.id); setSelectedPlayerIds([]); }} style={{ "--accent": game.accent }}>
+            <img src={game.image} alt={game.name} />
+            <span>{game.name}</span>
+          </button>
+        ))}
       </div>
 
-      <div className="grid-2">
-        <section className="panel-card">
+      <section className="panel-card enrollment-admin-hero" style={{ "--accent": selectedGame.accent }}>
+        <div>
+          <span className="eyebrow">{selectedGame.status}</span>
+          <h3>{selectedGame.name}</h3>
+          <p>{selectedGame.format} · {selectedGame.teamSize} · equipos no permanentes para partida, ronda o fase específica.</p>
+        </div>
+        <div className="availability-strip compact">
+          <div><strong>{registeredPlayers.length}</strong><span>Inscritos</span></div>
+          <div><strong>{availablePlayers.length}</strong><span>Disponibles</span></div>
+          <div><strong>{activeTeams.length}</strong><span>Equipos activos</span></div>
+          <div><strong>{activeMatches.length}</strong><span>Partidas abiertas</span></div>
+        </div>
+      </section>
+
+      <div className="team-builder-layout">
+        <section className="panel-card registered-panel">
           <div className="section-title">
             <div>
-              <span className="eyebrow">Nuevo equipo temporal</span>
-              <h3>Alta rápida de grupo</h3>
+              <span className="eyebrow">Jugadores inscritos</span>
+              <h3>{selectedGame.name}</h3>
             </div>
+            <Search size={20} />
+          </div>
+          <label className="search-box">Buscar por nombre o username
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Ej. Omar, ana_dev..." />
+          </label>
+          <div className="registered-admin-list">
+            {filteredPlayers.map((player) => {
+              const isBusy = busyPlayerIds.has(player.id);
+              const isSelected = selectedPlayerIds.includes(player.id);
+              return (
+                <button key={player.id} type="button" className={`${isBusy ? "busy" : ""} ${isSelected ? "selected" : ""}`} onClick={() => togglePlayer(player.id)}>
+                  <strong>{player.name}</strong>
+                  <span>@{player.username} · {player.registrationStatus}</span>
+                  <em>{isBusy ? "En equipo" : isSelected ? "Seleccionado" : "Disponible"}</em>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="panel-card create-from-selection">
+          <div className="section-title">
+            <div>
+              <span className="eyebrow">+ Crear equipo</span>
+              <h3>Desde selección actual</h3>
+            </div>
+            <Plus size={20} />
           </div>
           <form className="team-form" onSubmit={handleCreateTeam}>
             <label>Nombre operativo
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej. Mesa A - Azul" />
+              <input value={teamName} onChange={(event) => setTeamName(event.target.value)} placeholder="Equipo Alpha" />
             </label>
-            <label>Tag
-              <input value={form.tag} onChange={(e) => setForm({ ...form, tag: e.target.value.toUpperCase() })} placeholder="A1" maxLength={5} />
-            </label>
-            <label>Juego
-              <select value={form.gameId} onChange={(e) => setForm({ ...form, gameId: e.target.value })}>
-                {gameConfigs.map((game) => <option key={game.id} value={game.id}>{game.name}</option>)}
-              </select>
-            </label>
-            <button className="primary-btn">Crear equipo temporal</button>
-          </form>
-        </section>
-
-        <section className="panel-card">
-          <div className="section-title">
-            <div>
-              <span className="eyebrow">Asignar jugador</span>
-              <h3>Evita duplicados activos</h3>
+            <div className="selection-preview">
+              {selectedPlayerIds.map((playerId) => <span key={playerId}>{playersById[playerId]?.name}</span>)}
+              {selectedPlayerIds.length === 0 && <p>Selecciona jugadores disponibles desde la lista del juego.</p>}
             </div>
-            <UserPlus size={20} />
-          </div>
-          <form className="assign-form" onSubmit={handleAssign}>
-            <label>Equipo activo
-              <select value={assignment.teamId} onChange={(e) => setAssignment({ ...assignment, teamId: e.target.value })}>
-                {teams.filter((team) => team.status === "Activo").map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
-              </select>
-            </label>
-            <label>Jugador disponible
-              <select value={assignment.playerId} onChange={(e) => setAssignment({ ...assignment, playerId: e.target.value })}>
-                <option value="">Seleccionar</option>
-                {availablePlayers.map((player) => <option key={player.id} value={player.id}>{player.name} (@{player.username})</option>)}
-              </select>
-            </label>
-            <button className="ghost-btn">Agregar al equipo</button>
+            <button className="primary-btn">Crear equipo temporal</button>
           </form>
         </section>
       </div>
 
       <section className="team-grid">
-        {teams.map((team) => {
-          const game = gameConfigs.find((item) => item.id === team.gameId);
-          return (
-            <article className="panel-card team-card" key={team.id}>
-              <header>
-                <div className="team-avatar">{team.tag}</div>
-                <div>
-                  <input value={team.name} onChange={(e) => updateTeam(team.id, { name: e.target.value })} />
-                  <span>{team.type} · {team.status} · {game?.shortName}</span>
+        {gameTeams.map((team) => (
+          <article className="panel-card team-card" key={team.id}>
+            <header>
+              <div className="team-avatar">{team.tag}</div>
+              <div>
+                <input value={team.name} onChange={(event) => updateTeam(team.id, { name: event.target.value })} />
+                <span>{team.type} · {team.status} · {selectedGame.shortName}</span>
+              </div>
+              <button className="danger-btn" onClick={() => deleteTeam(team.id)}><Trash2 size={16} /></button>
+            </header>
+
+            <div className="quick-move-list">
+              {availablePlayers.map((player) => (
+                <button key={player.id} type="button" onClick={() => movePlayer(team.id, player.id)}><UserPlus size={13} /> {player.username}</button>
+              ))}
+            </div>
+
+            <div className="roster-list">
+              {team.playerIds.map((playerId) => (
+                <div key={playerId}>
+                  <strong>{playersById[playerId]?.name}</strong>
+                  <span>@{playersById[playerId]?.username}</span>
+                  <button type="button" onClick={() => removePlayerFromTeam(team.id, playerId)}><UserMinus size={14} /></button>
                 </div>
-                <button className="danger-btn" onClick={() => deleteTeam(team.id)}><Trash2 size={16} /></button>
-              </header>
+              ))}
+              {team.playerIds.length === 0 && <p>Sin jugadores asignados.</p>}
+            </div>
 
-              <div className="assigned-games">
-                {gameConfigs.map((option) => (
-                  <button
-                    key={option.id}
-                    className={team.gameId === option.id ? "active" : ""}
-                    onClick={() => updateTeam(team.id, { gameId: option.id })}
-                    style={{ "--accent": option.accent }}
-                  >
-                    {option.shortName}
-                  </button>
-                ))}
-              </div>
-
-              <div className="roster-list">
-                {team.playerIds.map((playerId) => (
-                  <div key={playerId}>
-                    <strong>{playersById[playerId]?.name}</strong>
-                    <span>@{playersById[playerId]?.username}</span>
-                    <button type="button" onClick={() => removePlayerFromTeam(team.id, playerId)}><UserMinus size={14} /></button>
-                  </div>
-                ))}
-                {team.playerIds.length === 0 && <p>Sin jugadores asignados.</p>}
-              </div>
-            </article>
-          );
-        })}
+            <button className="ghost-btn start-match-hint"><Play size={15} /> Usar en Partidas → Crear partida</button>
+          </article>
+        ))}
       </section>
     </div>
   );

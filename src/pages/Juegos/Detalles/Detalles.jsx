@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "../../../components/Navbar/Navbar";
+import { useApp } from "../../../context/AppContext";
 import cs from "../../../assets/images/juegos/cs.jpg";
 import bombsquad from "../../../assets/images/juegos/bombsquad.jpg";
 import soulknight from "../../../assets/images/juegos/soulknight.jpg";
@@ -366,7 +367,12 @@ const juegos = [
 export default function Detalles() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { gameConfigs, rankingsByGame, registerToGame, cancelRegistration, getRegistration, getRegisteredPlayers } = useApp();
   const juego = juegos.find((j) => j.id === parseInt(id));
+  const gameConfig = gameConfigs.find((game) => game.legacyId === parseInt(id));
+  const registration = gameConfig ? getRegistration(gameConfig.id) : null;
+  const registeredPlayers = gameConfig ? getRegisteredPlayers(gameConfig.id) : [];
+  const rankingLeader = gameConfig ? rankingsByGame[gameConfig.id]?.[0] : null;
 
   if (!juego) {
     return (
@@ -411,6 +417,28 @@ export default function Detalles() {
             </div>
           </div>
         </div>
+
+        <section className="detalles-section enrollment-panel">
+          <div>
+            <h2>⚡ Inscripción al juego</h2>
+            <p>Primero te inscribes al juego; luego el administrador solo arma equipos temporales con jugadores inscritos para cada ronda o fase.</p>
+            <div className="enrollment-stats">
+              <span><strong>{registeredPlayers.length}</strong> inscritos</span>
+              <span><strong>{gameConfig?.status ?? juego.torneo.modalidad}</strong> estado</span>
+              <span><strong>{gameConfig?.format ?? juego.formato}</strong> modalidad</span>
+              <span><strong>@{rankingLeader?.player.username ?? "pendiente"}</strong> ranking</span>
+            </div>
+          </div>
+          <div className="enrollment-actions">
+            <button className={registration ? "btn-inscribirse btn-registered" : "btn-inscribirse"} onClick={() => gameConfig && registerToGame(gameConfig.id)}>
+              {registration ? `✓ Inscrito · ${registration.status}` : "Inscribirse"}
+            </button>
+            {registration && (
+              <button className="btn-cancelar" onClick={() => gameConfig && cancelRegistration(gameConfig.id)}>Cancelar inscripción</button>
+            )}
+            <button className="btn-cancelar" onClick={() => navigate("/ranking")}>Ver ranking</button>
+          </div>
+        </section>
 
         {/* DESCRIPCIÓN */}
         <div className="detalles-section">
@@ -515,8 +543,19 @@ export default function Detalles() {
           </div>
         </div>
 
-        {/* BOTÓN INSCRIBIRSE */}
-        <button className="btn-inscribirse">🏆 Inscribirse al torneo</button>
+        {/* LISTA DE INSCRITOS */}
+        <div className="detalles-section">
+          <h2>👥 Jugadores inscritos</h2>
+          <div className="registered-list">
+            {registeredPlayers.map((player) => (
+              <article key={player.id}>
+                <strong>{player.name}</strong>
+                <span>@{player.username}</span>
+                <em>{player.registrationStatus}</em>
+              </article>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -37,3 +37,6 @@
 .trophy-grid strong, .trophy-grid small { display: block; }
 .trophy-grid small { color: #94a3b8; margin-top: 4px; }
 @media (max-width: 860px) { .profile-hero, .profile-grid, .profile-games, .profile-stats, .trophy-grid { grid-template-columns: 1fr; } .profile-rank { width: fit-content; } .profile-history article { grid-template-columns: 1fr; } .profile-history em { grid-row: auto; grid-column: auto; } }
+.profile-games article { grid-template-columns: 74px 1fr auto; }
+.profile-games article button { padding: 8px 10px; box-shadow: none; background: rgba(239, 68, 68, .14); color: #fecaca; border-color: rgba(239, 68, 68, .24); }
+@media (max-width: 860px) { .profile-games article { grid-template-columns: 74px 1fr; } .profile-games article button { grid-column: 1 / -1; } }

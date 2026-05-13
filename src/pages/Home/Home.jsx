@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar/Navbar";
 import StatsChart from "../../components/StatsChart/StatsChart";
 import logo from "../../assets/images/playground-logo.png";
-import { games } from "../../data/games";
+import { useApp } from "../../context/AppContext";
 import "./Home.css";
 
 const activity = [
@@ -26,7 +26,13 @@ const activeMatches = [
 
 export default function Home() {
   const navigate = useNavigate();
-  const playersData = games.map((g) => ({ name: g.nombre, value: g.jugadores }));
+  const { gameConfigs, rankingsByGame, registerToGame, getRegistration, getRegisteredPlayers } = useApp();
+  const playersData = gameConfigs.map((game) => ({ name: game.shortName, value: getRegisteredPlayers(game.id).length }));
+
+  const handleRegistration = (event, gameId) => {
+    event.stopPropagation();
+    if (!getRegistration(gameId)) registerToGame(gameId);
+  };
 
   return (
     <div>
@@ -56,12 +62,32 @@ export default function Home() {
 
         <h2 className="title-gamer">JUEGOS DISPONIBLES</h2>
         <div className="grid grid-3">
-          {games.map((game) => (
-            <div key={game.id} className="game-card">
-              <div className="game-img"><img src={game.img} alt={game.nombre} /><div className="overlay" /></div>
-              <div className="game-info"><h3>{game.nombre}</h3><p>{game.desc}</p><button className="btn-primary" onClick={() => navigate(`/juego/${game.id}`)}>Ver detalles →</button></div>
-            </div>
-          ))}
+          {gameConfigs.map((game) => {
+            const registration = getRegistration(game.id);
+            const rankingLeader = rankingsByGame[game.id]?.[0];
+            return (
+              <div key={game.id} className="game-card">
+                <div className="game-img"><img src={game.image} alt={game.name} /><div className="overlay" /></div>
+                <div className="game-info">
+                  <div className="game-card-heading">
+                    <h3>{game.name}</h3>
+                    <span>{getRegisteredPlayers(game.id).length} inscritos</span>
+                  </div>
+                  <p>{game.description}</p>
+                  <div className="game-mini-meta">
+                    <span>{game.status}</span>
+                    <span>{game.format}</span>
+                    <span>Top: @{rankingLeader?.player.username ?? "pendiente"}</span>
+                  </div>
+                  <div className="game-actions-row">
+                    <button className={registration ? "btn-secondary is-registered" : "btn-primary"} onClick={(event) => handleRegistration(event, game.id)}>{registration ? "✓ Inscrito" : "Inscribirse"}</button>
+                    <button className="btn-secondary" onClick={() => navigate("/ranking")}>Ver ranking</button>
+                    <button className="btn-secondary" onClick={() => navigate(`/juego/${game.legacyId}`)}>Detalles</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <section className="command-center">

@@ -4,6 +4,7 @@ import {
   gameConfigs as initialGameConfigs,
   initialMatches,
   initialPlayers,
+  initialRegistrations,
   initialTeams,
   matchStatuses,
   tournamentPhases,
@@ -21,6 +22,7 @@ const createId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(1
 export function AppProvider({ children }) {
   const [gameConfigs, setGameConfigs] = useState(initialGameConfigs);
   const [players, setPlayers] = useState(initialPlayers);
+  const [registrations, setRegistrations] = useState(initialRegistrations);
   const [teams, setTeams] = useState(initialTeams);
   const [matches, setMatches] = useState(initialMatches);
   const [currentUser, setCurrentUser] = useState(mockedCurrentUser);
@@ -37,8 +39,10 @@ export function AppProvider({ children }) {
 
   const createTeam = ({ name, tag, gameId, playerIds = [], matchId = null }) => {
     const id = createId("team");
+    const enrolledIds = new Set(getRegisteredPlayers(gameId).map((player) => player.id));
     const availablePlayerIds = playerIds.filter((playerId) =>
-      !teams.some((team) => team.status === "Activo" && team.playerIds.includes(playerId))
+      enrolledIds.has(playerId) &&
+      !teams.some((team) => team.gameId === gameId && team.status === "Activo" && team.playerIds.includes(playerId))
     );
 
     const newTeam = {
@@ -73,10 +77,14 @@ export function AppProvider({ children }) {
   };
 
   const assignPlayerToTeam = (teamId, playerId) => {
-    const isBusy = teams.some(
-      (team) => team.id !== teamId && team.status === "Activo" && team.playerIds.includes(playerId)
+    const targetTeam = teams.find((team) => team.id === teamId);
+    const isRegistered = registrations.some(
+      (registration) => registration.userId === playerId && registration.gameId === targetTeam?.gameId
     );
-    if (isBusy) return false;
+    const isBusy = teams.some(
+      (team) => team.id !== teamId && team.gameId === targetTeam?.gameId && team.status === "Activo" && team.playerIds.includes(playerId)
+    );
+    if (!targetTeam || !isRegistered || isBusy) return false;
 
     setTeams((prev) =>
       prev.map((team) =>
@@ -102,9 +110,11 @@ export function AppProvider({ children }) {
     const gameConfig = gameConfigs.find((game) => game.id === gameId);
     if (!gameConfig) return;
 
+    const matchId = createId("match");
+    setTeams((prev) => prev.map((team) => (teamIds.includes(team.id) ? { ...team, matchId } : team)));
     setMatches((prev) => [
       {
-        id: createId("match"),
+        id: matchId,
         gameId,
         phaseType,
         stage,
@@ -134,6 +144,9 @@ export function AppProvider({ children }) {
   };
 
   const updateMatchResult = (matchId, playerId, stats, points = 0, won = false) => {
+    const matchToClose = matches.find((match) => match.id === matchId);
+    const teamIdsToClose = matchToClose?.teamResults.map((result) => result.teamId) ?? [];
+    setTeams((prev) => prev.map((team) => (teamIdsToClose.includes(team.id) ? { ...team, status: "Cerrado" } : team)));
     setMatches((prev) =>
       prev.map((match) => {
         if (match.id !== matchId) return match;
@@ -193,6 +206,56 @@ export function AppProvider({ children }) {
     setGameConfigs((prev) => [newGame, ...prev]);
   };
 
+  const registerToGame = (gameId, userId = currentUser?.id) => {
+    if (!userId || registrations.some((registration) => registration.userId === userId && registration.gameId === gameId)) return;
+
+    setRegistrations((prev) => [
+      ...prev,
+      {
+        id: createId("reg"),
+        userId,
+        gameId,
+        status: "inscrito",
+        registeredAt: new Date().toISOString().slice(0, 16).replace("T", " "),
+      },
+    ]);
+    setPlayers((prev) =>
+      prev.map((player) =>
+        player.id === userId ? { ...player, games: [...new Set([...(player.games ?? []), gameId])] } : player
+      )
+    );
+  };
+
+  const cancelRegistration = (gameId, userId = currentUser?.id) => {
+    const hasStarted = matches.some(
+      (match) => match.gameId === gameId && match.playerIds.includes(userId) && !["Pendiente", "Cancelada"].includes(match.status)
+    );
+    if (!userId || hasStarted) return false;
+
+    setRegistrations((prev) =>
+      prev.filter((registration) => !(registration.userId === userId && registration.gameId === gameId))
+    );
+    setPlayers((prev) =>
+      prev.map((player) =>
+        player.id === userId ? { ...player, games: (player.games ?? []).filter((id) => id !== gameId) } : player
+      )
+    );
+    return true;
+  };
+
+  const getRegistration = (gameId, userId = currentUser?.id) =>
+    registrations.find((registration) => registration.gameId === gameId && registration.userId === userId);
+
+  const getRegisteredPlayers = (gameId) =>
+    registrations
+      .filter((registration) => registration.gameId === gameId)
+      .map((registration) => ({
+        ...players.find((player) => player.id === registration.userId),
+        registrationStatus: registration.status,
+        registeredAt: registration.registeredAt,
+      }))
+      .filter((player) => player.id);
+
   const updateGame = (gameId, updates) => {
     setGameConfigs((prev) => prev.map((game) => (game.id === gameId ? { ...game, ...updates } : game)));
   };
@@ -223,6 +286,7 @@ export function AppProvider({ children }) {
     tournamentPhases,
     matchStatuses,
     players,
+    registrations,
     teams,
     matches,
     rankingsByGame,
@@ -231,6 +295,10 @@ export function AppProvider({ children }) {
     updateGame,
     deleteGame,
     toggleGameStatus,
+    registerToGame,
+    cancelRegistration,
+    getRegistration,
+    getRegisteredPlayers,
     createTeam,
     updateTeam,
     deleteTeam,

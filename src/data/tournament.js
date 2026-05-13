@@ -98,6 +98,19 @@ export const initialPlayers = [
   { id: "u-6", name: "Dylan Torres", username: "dylant", role: "Jugador", status: "Activo", games: ["bomb-squad"] },
 ];
 
+export const initialRegistrations = [
+  { id: "reg-u-1-counter-strike-16", userId: "u-1", gameId: "counter-strike-16", status: "en torneo", registeredAt: "2026-05-10 09:00" },
+  { id: "reg-u-1-bomb-squad", userId: "u-1", gameId: "bomb-squad", status: "inscrito", registeredAt: "2026-05-10 09:15" },
+  { id: "reg-u-2-soul-knight", userId: "u-2", gameId: "soul-knight", status: "inscrito", registeredAt: "2026-05-10 09:20" },
+  { id: "reg-u-2-bomb-squad", userId: "u-2", gameId: "bomb-squad", status: "inscrito", registeredAt: "2026-05-10 09:25" },
+  { id: "reg-u-3-counter-strike-16", userId: "u-3", gameId: "counter-strike-16", status: "en torneo", registeredAt: "2026-05-10 09:30" },
+  { id: "reg-u-3-bomb-squad", userId: "u-3", gameId: "bomb-squad", status: "inscrito", registeredAt: "2026-05-10 09:35" },
+  { id: "reg-u-4-soul-knight", userId: "u-4", gameId: "soul-knight", status: "inscrito", registeredAt: "2026-05-10 09:40" },
+  { id: "reg-u-5-counter-strike-16", userId: "u-5", gameId: "counter-strike-16", status: "en torneo", registeredAt: "2026-05-10 09:45" },
+  { id: "reg-u-5-soul-knight", userId: "u-5", gameId: "soul-knight", status: "inscrito", registeredAt: "2026-05-10 09:50" },
+  { id: "reg-u-6-bomb-squad", userId: "u-6", gameId: "bomb-squad", status: "inscrito", registeredAt: "2026-05-10 09:55" },
+];
+
 export const tournamentPhases = ["Casual", "Clasificatoria", "Cuartos", "Semifinal", "Final"];
 
 export const matchStatuses = ["Pendiente", "En preparación", "En curso", "Finalizada", "Cancelada"];

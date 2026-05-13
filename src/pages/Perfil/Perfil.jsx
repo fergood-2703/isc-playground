@@ -6,7 +6,7 @@ import "./Perfil.css";
 const trophies = ["MVP Neon", "Boss Hunter", "Clutch 1v3", "Top 3 Global"];
 
 export default function Perfil() {
-  const { currentUser, updateCurrentUser, players, gameConfigs, rankingsByGame, globalLeaderboard, matches } = useApp();
+  const { currentUser, updateCurrentUser, players, gameConfigs, rankingsByGame, globalLeaderboard, matches, registrations, cancelRegistration } = useApp();
   const safeUser = currentUser ?? { id: "u-1", name: "Invitado", username: "guest" };
   const [profile, setProfile] = useState({ username: safeUser.username, name: safeUser.name, password: "" });
 
@@ -14,6 +14,7 @@ export default function Perfil() {
   const globalStats = useMemo(() => globalLeaderboard.find((row) => row.player.id === player.id), [globalLeaderboard, player.id]);
   const globalRank = useMemo(() => globalLeaderboard.findIndex((row) => row.player.id === player.id) + 1, [globalLeaderboard, player.id]);
   const history = matches.filter((match) => match.playerIds.includes(player.id));
+  const userRegistrations = registrations.filter((registration) => registration.userId === player.id);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -60,9 +61,20 @@ export default function Perfil() {
         <section className="profile-panel">
           <h2>Juegos inscritos</h2>
           <div className="profile-games">
-            {gameConfigs.filter((game) => player.games.includes(game.id)).map((game) => {
-              const row = rankingsByGame[game.id]?.find((item) => item.player.id === player.id);
-              return <article key={game.id} style={{ "--accent": game.accent }}><img src={game.image} alt={game.name} /><div><strong>{game.shortName}</strong><span>{row ? `Ranking #${row.rank} · ${Math.round(row.score)} pts` : "sin partidas"}</span></div></article>;
+            {userRegistrations.map((registration) => {
+              const game = gameConfigs.find((item) => item.id === registration.gameId);
+              const row = rankingsByGame[registration.gameId]?.find((item) => item.player.id === player.id);
+              if (!game) return null;
+              return (
+                <article key={registration.id} style={{ "--accent": game.accent }}>
+                  <img src={game.image} alt={game.name} />
+                  <div>
+                    <strong>{game.shortName}</strong>
+                    <span>{registration.status} · {row ? `Ranking #${row.rank} · ${Math.round(row.score)} pts` : "sin partidas"}</span>
+                  </div>
+                  {registration.status !== "en torneo" && <button type="button" onClick={() => cancelRegistration(game.id, player.id)}>Cancelar</button>}
+                </article>
+              );
             })}
           </div>
         </section>
