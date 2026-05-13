@@ -29,6 +29,9 @@ export default function Navbar() {
         <NavLink to="/about" onClick={() => setOpen(false)}>
           About Us
         </NavLink>
+        <NavLink to="/perfil" onClick={() => setOpen(false)}>
+          Perfil
+        </NavLink>
         <button className="btn-login" onClick={() => { setOpen(false); navigate("/login"); }}>
           Login
         </button>

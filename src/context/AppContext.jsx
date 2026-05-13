@@ -5,6 +5,8 @@ import {
   initialMatches,
   initialPlayers,
   initialTeams,
+  matchStatuses,
+  tournamentPhases,
 } from "../data/tournament";
 import {
   calculateAllRankings,
@@ -23,8 +25,8 @@ export function AppProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(mockedCurrentUser);
 
   const rankingsByGame = useMemo(
-    () => calculateAllRankings({ gameConfigs, teams, matches }),
-    [teams, matches]
+    () => calculateAllRankings({ gameConfigs, players, matches }),
+    [players, matches]
   );
 
   const globalLeaderboard = useMemo(
@@ -32,29 +34,24 @@ export function AppProvider({ children }) {
     [rankingsByGame]
   );
 
-  const createTeam = ({ name, tag, gameIds, playerIds = [] }) => {
+  const createTeam = ({ name, tag, gameId, playerIds = [], matchId = null }) => {
     const id = createId("team");
+    const availablePlayerIds = playerIds.filter((playerId) =>
+      !teams.some((team) => team.status === "Activo" && team.playerIds.includes(playerId))
+    );
+
     const newTeam = {
       id,
       name,
       tag: tag || name.slice(0, 3).toUpperCase(),
-      captainId: playerIds[0] ?? players[0]?.id,
-      playerIds,
-      gameIds,
+      type: "Temporal",
+      status: "Activo",
+      matchId,
+      gameId,
+      playerIds: availablePlayerIds,
     };
 
     setTeams((prev) => [...prev, newTeam]);
-    setPlayers((prev) =>
-      prev.map((player) =>
-        playerIds.includes(player.id)
-          ? {
-              ...player,
-              teamIds: [...new Set([...(player.teamIds ?? []), id])],
-              games: [...new Set([...(player.games ?? []), ...gameIds])],
-            }
-          : player
-      )
-    );
   };
 
   const updateTeam = (teamId, updates) => {
@@ -69,35 +66,38 @@ export function AppProvider({ children }) {
       prev.map((match) => ({
         ...match,
         teamResults: match.teamResults.filter((result) => result.teamId !== teamId),
+        playerResults: match.playerResults?.filter((result) => result.teamId !== teamId) ?? [],
       }))
     );
   };
 
   const assignPlayerToTeam = (teamId, playerId) => {
-    const team = teams.find((item) => item.id === teamId);
-    if (!team) return;
+    const isBusy = teams.some(
+      (team) => team.id !== teamId && team.status === "Activo" && team.playerIds.includes(playerId)
+    );
+    if (isBusy) return false;
 
     setTeams((prev) =>
-      prev.map((item) =>
-        item.id === teamId
-          ? { ...item, playerIds: [...new Set([...item.playerIds, playerId])] }
-          : item
+      prev.map((team) =>
+        team.id === teamId
+          ? { ...team, playerIds: [...new Set([...team.playerIds, playerId])] }
+          : team
       )
     );
-    setPlayers((prev) =>
-      prev.map((player) =>
-        player.id === playerId
-          ? {
-              ...player,
-              teamIds: [...new Set([...(player.teamIds ?? []), teamId])],
-              games: [...new Set([...(player.games ?? []), ...team.gameIds])],
-            }
-          : player
+    return true;
+  };
+
+  const removePlayerFromTeam = (teamId, playerId) => {
+    setTeams((prev) =>
+      prev.map((team) =>
+        team.id === teamId
+          ? { ...team, playerIds: team.playerIds.filter((id) => id !== playerId) }
+          : team
       )
     );
   };
 
-  const createMatch = ({ gameId, stage, map, teamIds, scheduledAt }) => {
+  const createMatch = ({ gameId, stage, phaseType, map, teamIds, scheduledAt, duration = 0 }) => {
     const gameConfig = gameConfigs.find((game) => game.id === gameId);
     if (!gameConfig) return;
 
@@ -105,58 +105,65 @@ export function AppProvider({ children }) {
       {
         id: createId("match"),
         gameId,
+        phaseType,
         stage,
         map,
-        status: "Programada",
+        status: "Pendiente",
+        duration,
         scheduledAt,
+        playerIds: teams.filter((team) => teamIds.includes(team.id)).flatMap((team) => team.playerIds),
         teamResults: teamIds.map((teamId) => ({
           teamId,
+          playerIds: teams.find((team) => team.id === teamId)?.playerIds ?? [],
           stats: createEmptyStats(gameConfig),
         })),
+        playerResults: [],
       },
       ...prev,
     ]);
   };
 
-  const updateMatchResult = (matchId, teamId, stats) => {
+  const updateMatchStatus = (matchId, status) => {
+    setMatches((prev) => prev.map((match) => (match.id === matchId ? { ...match, status } : match)));
+    if (["Finalizada", "Cancelada"].includes(status)) {
+      const match = matches.find((item) => item.id === matchId);
+      const teamIds = match?.teamResults.map((result) => result.teamId) ?? [];
+      setTeams((prev) => prev.map((team) => (teamIds.includes(team.id) ? { ...team, status: "Cerrado" } : team)));
+    }
+  };
+
+  const updateMatchResult = (matchId, playerId, stats, points = 0, won = false) => {
     setMatches((prev) =>
-      prev.map((match) =>
-        match.id === matchId
-          ? {
-              ...match,
-              status: "Finalizada",
-              teamResults: match.teamResults.map((result) =>
-                result.teamId === teamId
-                  ? { ...result, stats: { ...result.stats, ...stats } }
-                  : result
-              ),
-            }
-          : match
-      )
+      prev.map((match) => {
+        if (match.id !== matchId) return match;
+        const teamId = match.teamResults.find((result) => result.playerIds.includes(playerId))?.teamId;
+        const playerResult = { playerId, teamId, stats, points: Number(points), won };
+        const existing = match.playerResults ?? [];
+        const nextPlayerResults = existing.some((result) => result.playerId === playerId)
+          ? existing.map((result) => (result.playerId === playerId ? playerResult : result))
+          : [...existing, playerResult];
+
+        return { ...match, status: "Finalizada", playerResults: nextPlayerResults };
+      })
     );
   };
 
-  const updateLiveRound = (matchId, teamId, metricKey, delta = 1) => {
+  const updateLiveRound = (matchId, playerId, metricKey, delta = 1) => {
     setMatches((prev) =>
-      prev.map((match) =>
-        match.id === matchId
-          ? {
-              ...match,
-              status: "En vivo",
-              teamResults: match.teamResults.map((result) =>
-                result.teamId === teamId
-                  ? {
-                      ...result,
-                      stats: {
-                        ...result.stats,
-                        [metricKey]: Math.max(0, Number(result.stats[metricKey] ?? 0) + delta),
-                      },
-                    }
-                  : result
-              ),
-            }
-          : match
-      )
+      prev.map((match) => {
+        if (match.id !== matchId) return match;
+        const teamId = match.teamResults.find((result) => result.playerIds.includes(playerId))?.teamId;
+        const existing = match.playerResults?.find((result) => result.playerId === playerId);
+        const stats = {
+          ...(existing?.stats ?? {}),
+          [metricKey]: Math.max(0, Number(existing?.stats?.[metricKey] ?? 0) + delta),
+        };
+        const playerResult = { playerId, teamId, stats, points: existing?.points ?? 0, won: existing?.won ?? false };
+        const nextPlayerResults = match.playerResults?.some((result) => result.playerId === playerId)
+          ? match.playerResults.map((result) => (result.playerId === playerId ? playerResult : result))
+          : [...(match.playerResults ?? []), playerResult];
+        return { ...match, status: "En curso", playerResults: nextPlayerResults };
+      })
     );
   };
 
@@ -167,6 +174,8 @@ export function AppProvider({ children }) {
   const value = {
     currentUser,
     gameConfigs,
+    tournamentPhases,
+    matchStatuses,
     players,
     teams,
     matches,
@@ -176,7 +185,9 @@ export function AppProvider({ children }) {
     updateTeam,
     deleteTeam,
     assignPlayerToTeam,
+    removePlayerFromTeam,
     createMatch,
+    updateMatchStatus,
     updateMatchResult,
     updateLiveRound,
     updateCurrentUser,
