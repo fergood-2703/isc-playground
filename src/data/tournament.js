@@ -98,7 +98,7 @@ export const initialPlayers = [
   { id: "u-6", name: "Dylan Torres", username: "dylant", role: "Jugador", status: "Activo", games: ["bomb-squad"] },
 ];
 
-export const tournamentPhases = ["Fase clasificatoria", "Octavos", "Cuartos", "Semifinal", "Final", "Casual / práctica"];
+export const tournamentPhases = ["Casual", "Clasificatoria", "Cuartos", "Semifinal", "Final"];
 
 export const matchStatuses = ["Pendiente", "En preparación", "En curso", "Finalizada", "Cancelada"];
 
@@ -114,7 +114,7 @@ export const initialMatches = [
   {
     id: "match-bs-1",
     gameId: "bomb-squad",
-    phaseType: "Fase clasificatoria",
+    phaseType: "Clasificatoria",
     stage: "Clasificatoria 01",
     map: "Doom Shroom",
     status: "Finalizada",
@@ -150,7 +150,7 @@ export const initialMatches = [
   {
     id: "match-sk-1",
     gameId: "soul-knight",
-    phaseType: "Casual / práctica",
+    phaseType: "Casual",
     stage: "Run 01",
     map: "Dungeon Seed A7",
     status: "Finalizada",

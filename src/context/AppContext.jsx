@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo, useState } from "react";
 import {
   currentUser as mockedCurrentUser,
-  gameConfigs,
+  gameConfigs as initialGameConfigs,
   initialMatches,
   initialPlayers,
   initialTeams,
@@ -19,6 +19,7 @@ const AppContext = createContext();
 const createId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
 
 export function AppProvider({ children }) {
+  const [gameConfigs, setGameConfigs] = useState(initialGameConfigs);
   const [players, setPlayers] = useState(initialPlayers);
   const [teams, setTeams] = useState(initialTeams);
   const [matches, setMatches] = useState(initialMatches);
@@ -26,7 +27,7 @@ export function AppProvider({ children }) {
 
   const rankingsByGame = useMemo(
     () => calculateAllRankings({ gameConfigs, players, matches }),
-    [players, matches]
+    [gameConfigs, players, matches]
   );
 
   const globalLeaderboard = useMemo(
@@ -167,9 +168,54 @@ export function AppProvider({ children }) {
     );
   };
 
+  const createGame = (game) => {
+    const id = game.id || createId("game");
+    const newGame = {
+      id,
+      legacyId: Date.now(),
+      shortName: game.shortName || game.name,
+      image: game.image,
+      accent: game.accent || "#06b6d4",
+      teamSize: game.teamSize || "4 jugadores",
+      duration: game.duration || "Configurable",
+      format: game.format || "Partida personalizada",
+      status: game.status || "Activo",
+      description: game.description || "Nuevo juego disponible en ISC Playground.",
+      pointFormula: game.pointFormula || "puntos manuales + métricas",
+      scoringRules: game.scoringRules?.length ? game.scoringRules : [{ key: "points", label: "Mayor puntuación", direction: "desc" }],
+      metrics: game.metrics?.length ? game.metrics : [{ key: "points", label: "Puntos", type: "number", defaultValue: 0 }],
+      maps: game.maps || [],
+      visualMetrics: game.visualMetrics?.length ? game.visualMetrics : ["points"],
+      winCondition: game.winCondition || "Gana el usuario con mejor puntuación individual.",
+      ...game,
+      id,
+    };
+    setGameConfigs((prev) => [newGame, ...prev]);
+  };
+
+  const updateGame = (gameId, updates) => {
+    setGameConfigs((prev) => prev.map((game) => (game.id === gameId ? { ...game, ...updates } : game)));
+  };
+
+  const deleteGame = (gameId) => {
+    setGameConfigs((prev) => prev.filter((game) => game.id !== gameId));
+    setMatches((prev) => prev.filter((match) => match.gameId !== gameId));
+    setTeams((prev) => prev.filter((team) => team.gameId !== gameId));
+  };
+
+  const toggleGameStatus = (gameId) => {
+    setGameConfigs((prev) =>
+      prev.map((game) =>
+        game.id === gameId ? { ...game, status: game.status === "Activo" ? "Desactivado" : "Activo" } : game
+      )
+    );
+  };
+
   const updateCurrentUser = (updates) => {
     setCurrentUser((prev) => ({ ...prev, ...updates }));
   };
+
+  const logout = () => setCurrentUser(null);
 
   const value = {
     currentUser,
@@ -181,6 +227,10 @@ export function AppProvider({ children }) {
     matches,
     rankingsByGame,
     globalLeaderboard,
+    createGame,
+    updateGame,
+    deleteGame,
+    toggleGameStatus,
     createTeam,
     updateTeam,
     deleteTeam,
@@ -191,6 +241,7 @@ export function AppProvider({ children }) {
     updateMatchResult,
     updateLiveRound,
     updateCurrentUser,
+    logout,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
