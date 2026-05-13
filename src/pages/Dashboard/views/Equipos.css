@@ -1,56 +1,18 @@
-.teams {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.team-form,
-.player-form {
-  display: flex;
-  gap: 10px;
-
-  background: rgba(15,23,42,0.6);
-  padding: 15px;
-  border-radius: 10px;
-}
-
-input, select {
-  background: #020617;
-  border: 1px solid rgba(255,255,255,0.05);
-  padding: 10px;
-  border-radius: 8px;
-  color: white;
-  flex: 1;
-}
-
-button {
-  background: linear-gradient(135deg, #7c4dff, #00f0ff);
-  border: none;
-  padding: 10px 14px;
-  border-radius: 8px;
-  color: white;
-  cursor: pointer;
-}
-
-/* LISTA */
-.team-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 16px;
-}
-
-.team-card {
-  background: rgba(15,23,42,0.7);
-  padding: 15px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.05);
-}
-
-.team-card ul {
-  margin: 10px 0;
-  padding-left: 15px;
-}
-
-.delete {
-  background: #ef4444;
-}
+.teams-admin { gap: 22px; }
+.team-form, .assign-form { display: grid; gap: 13px; }
+.game-checks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.check-card { border: 1px solid rgba(148, 163, 184, .14); border-radius: 14px; padding: 12px; background: rgba(2, 6, 23, .46); display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.check-card:has(input:checked) { border-color: var(--accent); color: white; box-shadow: inset 0 0 18px color-mix(in srgb, var(--accent), transparent 84%); }
+.team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 16px; }
+.team-card header { display: grid; grid-template-columns: 58px 1fr auto; gap: 12px; align-items: center; margin-bottom: 16px; }
+.team-avatar { width: 54px; height: 54px; border-radius: 18px; display: grid; place-items: center; background: linear-gradient(135deg, #7c4dff, #06b6d4); font-weight: 900; }
+.team-card header input { font-size: 18px; font-weight: 900; width: 100%; padding: 8px 10px; }
+.team-card header span { color: #94a3b8; font-size: 13px; }
+.assigned-games { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.assigned-games button { border: 1px solid rgba(148, 163, 184, .16); background: rgba(148, 163, 184, .08); color: #94a3b8; border-radius: 999px; padding: 8px 10px; cursor: pointer; }
+.assigned-games button.active { color: white; border-color: var(--accent); background: color-mix(in srgb, var(--accent), transparent 78%); }
+.roster-list { display: grid; gap: 10px; }
+.roster-list div { padding: 12px; border-radius: 14px; background: rgba(2, 6, 23, .46); border: 1px solid rgba(148, 163, 184, .1); }
+.roster-list strong, .roster-list span { display: block; }
+.roster-list span, .roster-list p { color: #94a3b8; }
+@media (max-width: 640px) { .game-checks { grid-template-columns: 1fr; } }

@@ -1,137 +1,139 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Trash2, UserPlus } from "lucide-react";
+import { useApp } from "../../../context/AppContext";
 import "./Equipos.css";
 
 export default function Equipos() {
-    const [teams, setTeams] = useState([]);
+  const { gameConfigs, players, teams, createTeam, updateTeam, deleteTeam, assignPlayerToTeam } = useApp();
+  const [form, setForm] = useState({ name: "", tag: "", gameIds: [gameConfigs[0].id], playerIds: [] });
+  const [assignment, setAssignment] = useState({ teamId: teams[0]?.id ?? "", playerId: players[0]?.id ?? "" });
 
-    const [teamName, setTeamName] = useState("");
-    const [playerName, setPlayerName] = useState("");
-    const [selectedTeam, setSelectedTeam] = useState(null);
+  const playersById = useMemo(() => Object.fromEntries(players.map((player) => [player.id, player])), [players]);
 
-    const [users] = useState([
-        { id: 1, nombre: "Fer" },
-        { id: 2, nombre: "Carlos" },
-        { id: 3, nombre: "Ana" },
-        { id: 4, nombre: "Luis" },
-    ]);
+  const toggleFormGame = (gameId) => {
+    setForm((prev) => ({
+      ...prev,
+      gameIds: prev.gameIds.includes(gameId)
+        ? prev.gameIds.filter((id) => id !== gameId)
+        : [...prev.gameIds, gameId],
+    }));
+  };
 
-    // crear equipo
-    const handleCreateTeam = (e) => {
-        e.preventDefault();
+  const handleCreateTeam = (event) => {
+    event.preventDefault();
+    if (!form.name || form.gameIds.length === 0) return;
+    createTeam(form);
+    setForm({ name: "", tag: "", gameIds: [gameConfigs[0].id], playerIds: [] });
+  };
 
-        if (!teamName) return;
+  const handleAssign = (event) => {
+    event.preventDefault();
+    if (!assignment.teamId || !assignment.playerId) return;
+    assignPlayerToTeam(assignment.teamId, assignment.playerId);
+  };
 
-        const newTeam = {
-            id: Date.now(),
-            name: teamName,
-            players: [],
-        };
+  return (
+    <div className="admin-page teams-admin">
+      <div className="page-head">
+        <div>
+          <span className="eyebrow">Gestión de equipos</span>
+          <h2>Roster, integrantes y juegos asignados</h2>
+          <p>Crea equipos, edita su tag competitivo, asigna jugadores y define en qué juegos oficiales participa cada roster.</p>
+        </div>
+      </div>
 
-        setTeams([...teams, newTeam]);
-        setTeamName("");
-    };
+      <div className="grid-2">
+        <section className="panel-card">
+          <div className="section-title">
+            <div>
+              <span className="eyebrow">Nuevo equipo</span>
+              <h3>Alta rápida de roster</h3>
+            </div>
+          </div>
+          <form className="team-form" onSubmit={handleCreateTeam}>
+            <label>Nombre del equipo
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej. Neon Strikers" />
+            </label>
+            <label>Tag
+              <input value={form.tag} onChange={(e) => setForm({ ...form, tag: e.target.value.toUpperCase() })} placeholder="NS" maxLength={5} />
+            </label>
+            <div className="game-checks">
+              {gameConfigs.map((game) => (
+                <label key={game.id} className="check-card" style={{ "--accent": game.accent }}>
+                  <input type="checkbox" checked={form.gameIds.includes(game.id)} onChange={() => toggleFormGame(game.id)} />
+                  <span>{game.shortName}</span>
+                </label>
+              ))}
+            </div>
+            <button className="primary-btn">Crear equipo</button>
+          </form>
+        </section>
 
-    // agregar jugador
-    const handleAddPlayer = (e) => {
-        e.preventDefault();
+        <section className="panel-card">
+          <div className="section-title">
+            <div>
+              <span className="eyebrow">Asignar jugador</span>
+              <h3>Roster manager</h3>
+            </div>
+            <UserPlus size={20} />
+          </div>
+          <form className="assign-form" onSubmit={handleAssign}>
+            <label>Equipo
+              <select value={assignment.teamId} onChange={(e) => setAssignment({ ...assignment, teamId: e.target.value })}>
+                {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+              </select>
+            </label>
+            <label>Jugador
+              <select value={assignment.playerId} onChange={(e) => setAssignment({ ...assignment, playerId: e.target.value })}>
+                {players.map((player) => <option key={player.id} value={player.id}>{player.name} (@{player.username})</option>)}
+              </select>
+            </label>
+            <button className="ghost-btn">Agregar al equipo</button>
+          </form>
+        </section>
+      </div>
 
-        if (!playerName || selectedTeam === null) return;
+      <section className="team-grid">
+        {teams.map((team) => (
+          <article className="panel-card team-card" key={team.id}>
+            <header>
+              <div className="team-avatar">{team.tag}</div>
+              <div>
+                <input value={team.name} onChange={(e) => updateTeam(team.id, { name: e.target.value })} />
+                <span>{team.playerIds.length} integrantes</span>
+              </div>
+              <button className="danger-btn" onClick={() => deleteTeam(team.id)}><Trash2 size={16} /></button>
+            </header>
 
-        setTeams(
-            teams.map((team) => {
-                if (team.id === selectedTeam) {
-
-                    // ❌ evitar duplicados
-                    if (team.players.includes(playerName)) {
-                        alert("Este jugador ya está en el equipo");
-                        return team;
-                    }
-
-                    return {
-                        ...team,
-                        players: [...team.players, playerName],
-                    };
-                }
-                return team;
-            })
-        );
-
-        setPlayerName("");
-    };
-
-    // eliminar equipo
-    const handleDeleteTeam = (id) => {
-        setTeams(teams.filter((t) => t.id !== id));
-    };
-
-    return (
-        <div className="teams">
-
-            <h2>Gestión de Equipos</h2>
-
-            {/* CREAR EQUIPO */}
-            <form className="team-form" onSubmit={handleCreateTeam}>
-                <input
-                    type="text"
-                    placeholder="Nombre del equipo"
-                    value={teamName}
-                    onChange={(e) => setTeamName(e.target.value)}
-                />
-
-                <button>Crear equipo</button>
-            </form>
-
-            {/* AGREGAR JUGADOR */}
-            <form className="player-form" onSubmit={handleAddPlayer}>
-                <select onChange={(e) => setSelectedTeam(Number(e.target.value))}>
-                    <option value="">Selecciona equipo</option>
-                    {teams.map((t) => (
-                        <option key={t.id} value={t.id}>
-                            {t.name}
-                        </option>
-                    ))}
-                </select>
-
-                <select
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
+            <div className="assigned-games">
+              {gameConfigs.map((game) => (
+                <button
+                  key={game.id}
+                  className={team.gameIds.includes(game.id) ? "active" : ""}
+                  onClick={() => updateTeam(team.id, {
+                    gameIds: team.gameIds.includes(game.id)
+                      ? team.gameIds.filter((id) => id !== game.id)
+                      : [...team.gameIds, game.id],
+                  })}
+                  style={{ "--accent": game.accent }}
                 >
-                    <option value="">Selecciona jugador</option>
-                    {users.map((u) => (
-                        <option key={u.id} value={u.nombre}>
-                            {u.nombre}
-                        </option>
-                    ))}
-                </select>
-
-                <button>Agregar jugador</button>
-            </form>
-
-            {/* LISTA */}
-            <div className="team-list">
-                {teams.length === 0 && <p>No hay equipos aún</p>}
-
-                {teams.map((team) => (
-                    <div className="team-card" key={team.id}>
-                        <h3>{team.name}</h3>
-
-                        <ul>
-                            {team.players.length === 0 && <li>Sin jugadores</li>}
-                            {team.players.map((p, i) => (
-                                <li key={i}>{p}</li>
-                            ))}
-                        </ul>
-
-                        <button
-                            className="delete"
-                            onClick={() => handleDeleteTeam(team.id)}
-                        >
-                            Eliminar equipo
-                        </button>
-                    </div>
-                ))}
+                  {game.shortName}
+                </button>
+              ))}
             </div>
 
-        </div>
-    );
+            <div className="roster-list">
+              {team.playerIds.map((playerId) => (
+                <div key={playerId}>
+                  <strong>{playersById[playerId]?.name}</strong>
+                  <span>@{playersById[playerId]?.username}</span>
+                </div>
+              ))}
+              {team.playerIds.length === 0 && <p>Sin jugadores asignados.</p>}
+            </div>
+          </article>
+        ))}
+      </section>
+    </div>
+  );
 }
