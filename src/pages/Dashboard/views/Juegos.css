@@ -39,3 +39,6 @@
 .metric-inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
 .result-editor button { display: inline-flex; gap: 8px; align-items: center; }
 @media (max-width: 980px) { .game-switcher, .game-hero, .soul-grid, .result-grid, .match-form { grid-template-columns: 1fr; } .game-hero img { width: 100%; } }
+.match-admin-card .pill select { margin-left: 8px; border: 0; border-radius: 10px; padding: 6px 8px; background: rgba(15, 23, 42, .9); color: white; }
+.result-editor h4 small { color: #94a3b8; margin-left: 6px; }
+.individual-results { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }

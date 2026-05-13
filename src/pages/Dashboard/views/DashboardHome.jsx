@@ -6,12 +6,12 @@ import "./DashboardHome.css";
 
 export default function DashboardHome() {
   const { gameConfigs, teams, players, matches, rankingsByGame, globalLeaderboard } = useApp();
-  const liveMatches = matches.filter((match) => match.status === "En vivo");
+  const liveMatches = matches.filter((match) => match.status === "En curso");
   const nextMatches = matches.slice(0, 4);
   const chartData = gameConfigs.map((game) => ({
     name: game.shortName,
     partidas: matches.filter((match) => match.gameId === game.id).length,
-    equipos: teams.filter((team) => team.gameIds.includes(game.id)).length,
+    equipos: teams.filter((team) => team.gameId === game.id).length,
   }));
 
   const topGame = gameConfigs[0];
@@ -24,7 +24,7 @@ export default function DashboardHome() {
           <span className="eyebrow">Centro de mando</span>
           <h2>Gestión real del torneo</h2>
           <p>
-            Administra juegos oficiales, equipos, partidas, resultados y rankings calculados con reglas independientes por juego.
+            Administra juegos oficiales, partidas, equipos temporales y rankings individuales calculados con reglas independientes por juego.
           </p>
         </div>
         <div className="control-badge">
@@ -40,7 +40,7 @@ export default function DashboardHome() {
         </div>
         <div className="stat-card">
           <Shield />
-          <span>Equipos</span>
+          <span>Equipos temporales</span>
           <strong>{teams.length}</strong>
         </div>
         <div className="stat-card">
@@ -51,7 +51,7 @@ export default function DashboardHome() {
         <div className="stat-card highlight">
           <Trophy />
           <span>Líder global</span>
-          <strong>{globalLeaderboard[0]?.team.name ?? "Pendiente"}</strong>
+          <strong>{globalLeaderboard[0]?.player.username ? `@${globalLeaderboard[0].player.username}` : "Pendiente"}</strong>
         </div>
       </div>
 
@@ -94,7 +94,7 @@ export default function DashboardHome() {
             <div>
               <span>Regla activa destacada</span>
               <strong>{topGame.name}: {getMetricLabel(topGame, topGame.scoringRules[0].key)}</strong>
-              <small>Actual líder: {topRanking?.team.name ?? "sin datos"}</small>
+              <small>Actual líder: {topRanking?.player.username ? `@${topRanking.player.username}` : "sin datos"}</small>
             </div>
           </div>
         </section>
@@ -117,7 +117,7 @@ export default function DashboardHome() {
                   <strong>{game?.name}</strong>
                   <span>{match.stage} · {match.map}</span>
                 </div>
-                <span className={`pill ${match.status === "En vivo" ? "live" : match.status === "Finalizada" ? "done" : ""}`}>{match.status}</span>
+                <span className={`pill ${match.status === "En curso" ? "live" : match.status === "Finalizada" ? "done" : ""}`}>{match.status}</span>
               </article>
             );
           })}

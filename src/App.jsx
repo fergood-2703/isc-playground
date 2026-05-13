@@ -6,6 +6,7 @@ import Registro from "./pages/Registro/Registro";
 import JuegosPage from "./pages/Juegos/Juegos";
 import RankingPage from "./pages/Ranking/Ranking";
 import AboutPage from "./pages/About/About";
+import Perfil from "./pages/Perfil/Perfil";
 
 // detalles juego
 import Detalles from "./pages/Juegos/Detalles/Detalles";
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/juegos" element={<JuegosPage />} />
         <Route path="/ranking" element={<RankingPage />} />
         <Route path="/about" element={<AboutPage />} />
+        <Route path="/perfil" element={<Perfil />} />
 
         {/* detalles */}
         <Route path="/juego/:id" element={<Detalles />} />
