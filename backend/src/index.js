@@ -11,6 +11,7 @@ import 'dotenv/config'
 import authRoutes from './routes/auth.routes.js'
 import userRoutes from './routes/user.routes.js'
 import gameRoutes from './routes/game.routes.js'
+import registrationRoutes from './routes/registration.routes.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -75,6 +76,13 @@ app.use('/api/users', userRoutes)
 // DELETE /api/games/:id         → eliminar juego (admin)
 // PATCH  /api/games/:id/status  → toggle activo/desactivado
 app.use('/api/games', gameRoutes)
+
+// Rutas de inscripciones
+// GET    /api/registrations?gameId= → jugadores inscritos a un juego
+// GET    /api/registrations?userId= → juegos de un usuario
+// POST   /api/registrations         → inscribirse a un juego
+// DELETE /api/registrations/:id     → cancelar inscripción
+app.use('/api/registrations', registrationRoutes)
 
 // ─────────────────────────────
 // ARRANCAR SERVIDOR
