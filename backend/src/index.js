@@ -12,6 +12,7 @@ import authRoutes from './routes/auth.routes.js'
 import userRoutes from './routes/user.routes.js'
 import gameRoutes from './routes/game.routes.js'
 import registrationRoutes from './routes/registration.routes.js'
+import teamRoutes from './routes/team.routes.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -83,6 +84,15 @@ app.use('/api/games', gameRoutes)
 // POST   /api/registrations         → inscribirse a un juego
 // DELETE /api/registrations/:id     → cancelar inscripción
 app.use('/api/registrations', registrationRoutes)
+
+// Rutas de equipos
+// GET    /api/teams?gameId=          → equipos de un juego
+// POST   /api/teams                  → crear equipo
+// PATCH  /api/teams/:id              → editar nombre
+// DELETE /api/teams/:id              → eliminar equipo
+// POST   /api/teams/:id/players      → agregar jugador
+// DELETE /api/teams/:id/players/:pid → quitar jugador
+app.use('/api/teams', teamRoutes)
 
 // ─────────────────────────────
 // ARRANCAR SERVIDOR
