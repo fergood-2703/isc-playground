@@ -9,6 +9,7 @@ import rateLimit from 'express-rate-limit'
 import morgan from 'morgan'
 import 'dotenv/config'
 import authRoutes from './routes/auth.routes.js'
+import userRoutes from './routes/user.routes.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -58,6 +59,12 @@ app.get('/', (req, res) => {
 // POST /api/auth/register → registrar usuario
 // POST /api/auth/login    → iniciar sesión
 app.use('/api/auth', authRoutes)
+
+// Rutas de usuarios
+// GET /api/users       → lista de usuarios
+// GET /api/users/:id   → perfil de usuario
+// PATCH /api/users/:id → editar perfil
+app.use('/api/users', userRoutes)
 
 // ─────────────────────────────
 // ARRANCAR SERVIDOR
