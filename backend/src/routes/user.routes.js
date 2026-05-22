@@ -7,8 +7,11 @@
 
 import express from 'express'
 import * as userController from '../controllers/user.controller.js'
+import { verifyToken } from '../middlewares/auth.middleware.js'
 
 const router = express.Router()
+
+// Rutas pública
 
 // GET /api/users → lista de todos los usuarios (Dashboard > Usuarios)
 router.get('/', userController.getAll)
@@ -16,7 +19,9 @@ router.get('/', userController.getAll)
 // GET /api/users/:id → perfil de un usuario específico
 router.get('/:id', userController.getById)
 
+// Rutas protegidas — cualquier usuario autenticado
+
 // PATCH /api/users/:id → editar perfil (username, name)
-router.patch('/:id', userController.update)
+router.patch('/:id', verifyToken, userController.update)
 
 export default router

@@ -7,6 +7,7 @@
 
 import * as teamRepository from '../repositories/team.repository.js'
 import * as registrationRepository from '../repositories/registration.repository.js'
+import { extractNumericId } from '../utils/helpers.js'
 
 // ─────────────────────────────
 // OBTENER EQUIPOS
@@ -128,17 +129,6 @@ const removePlayer = async (teamId, playerId) => {
   return formatTeam(updatedTeam)
 }
 
-// ─────────────────────────────
-// HELPERS
-// ─────────────────────────────
-
-// Extrae el número de un id con formato "u-1" → 1
-const extractNumericId = (id) => {
-  if (typeof id === 'string' && id.startsWith('u-')) {
-    return parseInt(id.replace('u-', ''))
-  }
-  return parseInt(id)
-}
 
 // Formatea el equipo exactamente como el front lo espera
 // playerIds como array de strings "u-1", "u-2"

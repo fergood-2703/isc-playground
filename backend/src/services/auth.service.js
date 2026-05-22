@@ -13,6 +13,7 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import * as authRepository from '../repositories/auth.repository.js'
+import { formatUser } from '../utils/helpers.js'
 
 // Código secreto que valida si alguien puede registrarse como admin
 // En producción esto debería ser una variable de entorno
@@ -106,21 +107,6 @@ const login = async ({ identifier, password }) => {
   )
 
   return { token, user: formatUser(user) }
-}
-
-// ─────────────────────────────
-// HELPER: FORMATEAR USUARIO
-// ─────────────────────────────
-// El front espera el id como string "u-1", "u-2"
-// También nunca devolvemos la contraseña
-const formatUser = (user) => {
-  const { password, ...rest } = user
-  return {
-    ...rest,
-    id: `u-${user.id}`,         // convierte 1 → "u-1"
-    games: [],                   // array de gameIds, se llena con inscripciones
-    createdAt: user.createdAt.toISOString()
-  }
 }
 
 export { register, login }

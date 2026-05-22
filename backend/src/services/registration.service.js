@@ -8,6 +8,7 @@
 import * as registrationRepository from '../repositories/registration.repository.js'
 import * as gameRepository from '../repositories/game.repository.js'
 import * as userRepository from '../repositories/user.repository.js'
+import { extractNumericId } from '../utils/helpers.js'
 
 // ─────────────────────────────
 // OBTENER INSCRIPCIONES
@@ -100,14 +101,6 @@ const formatRegistration = (registration) => {
       .replace('T', ' ')
       .substring(0, 16) // formato "2026-05-10 09:00"
   }
-}
-
-// Extrae el número de un id con formato "u-1" → 1
-const extractNumericId = (id) => {
-  if (typeof id === 'string' && id.startsWith('u-')) {
-    return parseInt(id.replace('u-', ''))
-  }
-  return parseInt(id)
 }
 
 export { getAll, create, remove }

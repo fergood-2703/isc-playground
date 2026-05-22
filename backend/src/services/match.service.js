@@ -7,6 +7,7 @@
 
 import * as matchRepository from '../repositories/match.repository.js'
 import * as teamRepository from '../repositories/team.repository.js'
+import { extractNumericId } from '../utils/helpers.js'
 
 // ─────────────────────────────
 // OBTENER PARTIDAS
@@ -140,17 +141,6 @@ const updateLive = async (matchId, { playerId, metricKey, delta }) => {
 
   const result = await matchRepository.updateResult(existing.id, { stats: newStats })
   return formatResult(result)
-}
-
-// ─────────────────────────────
-// HELPERS
-// ─────────────────────────────
-
-const extractNumericId = (id) => {
-  if (typeof id === 'string' && id.startsWith('u-')) {
-    return parseInt(id.replace('u-', ''))
-  }
-  return parseInt(id)
 }
 
 // Formatea la partida exactamente como el front lo espera

@@ -6,6 +6,7 @@
 // No sabe nada de HTTP, solo procesa datos y llama al repositorio.
 
 import * as userRepository from '../repositories/user.repository.js'
+import { extractNumericId, formatUser } from '../utils/helpers.js'
 
 // ─────────────────────────────
 // OBTENER TODOS LOS USUARIOS
@@ -56,31 +57,6 @@ const update = async (id, { username, name }) => {
 
   const user = await userRepository.update(numericId, { username, name })
   return formatUser(user)
-}
-
-// ─────────────────────────────
-// HELPERS
-// ─────────────────────────────
-
-// Extrae el número de un id con formato "u-1" → 1
-// Si ya es un número lo devuelve tal cual
-const extractNumericId = (id) => {
-  if (typeof id === 'string' && id.startsWith('u-')) {
-    return parseInt(id.replace('u-', ''))
-  }
-  return parseInt(id)
-}
-
-// Formatea el usuario para el frontend
-// Convierte el id a "u-1" y nunca devuelve la contraseña
-const formatUser = (user) => {
-  const { password, ...rest } = user
-  return {
-    ...rest,
-    id: `u-${user.id}`,
-    games: user.registrations?.map(r => r.gameId) || [],
-    createdAt: user.createdAt.toISOString()
-  }
 }
 
 export { getAll, getById, update }
