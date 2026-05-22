@@ -10,6 +10,7 @@ import morgan from 'morgan'
 import 'dotenv/config'
 import authRoutes from './routes/auth.routes.js'
 import userRoutes from './routes/user.routes.js'
+import gameRoutes from './routes/game.routes.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -65,6 +66,15 @@ app.use('/api/auth', authRoutes)
 // GET /api/users/:id   → perfil de usuario
 // PATCH /api/users/:id → editar perfil
 app.use('/api/users', userRoutes)
+
+// Rutas de juegos
+// GET    /api/games             → catálogo completo
+// GET    /api/games/:id         → juego por slug o legacyId
+// POST   /api/games             → crear juego (admin)
+// PATCH  /api/games/:id         → editar juego (admin)
+// DELETE /api/games/:id         → eliminar juego (admin)
+// PATCH  /api/games/:id/status  → toggle activo/desactivado
+app.use('/api/games', gameRoutes)
 
 // ─────────────────────────────
 // ARRANCAR SERVIDOR
