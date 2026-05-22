@@ -2,85 +2,125 @@
 // SERVICIO DE AUTENTICACIÓN
 // =============================
 
-// ¿Qué hace un servicio?
-// Aquí vive toda la lógica de negocio.
+// Aquí vive toda la lógica de negocio del auth.
 // No sabe nada de HTTP (req, res), solo procesa datos.
-// Su responsabilidad es:
-// 1. Validar reglas del negocio (¿el email ya existe?)
+// Responsabilidades:
+// 1. Validar reglas del negocio
 // 2. Encriptar contraseñas con bcrypt
-// 3. Generar tokens JWT para mantener la sesión
+// 3. Generar tokens JWT
 // 4. Llamar al repositorio para guardar o buscar en la BD
 
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import * as authRepository from '../repositories/auth.repository.js'
 
+// Código secreto que valida si alguien puede registrarse como admin
+// En producción esto debería ser una variable de entorno
+const ADMIN_CODE = process.env.ADMIN_CODE
+
 // ─────────────────────────────
 // REGISTRO
 // ─────────────────────────────
-// Recibe los datos del controlador, valida y guarda el usuario
-const register = async ({ name, email, password }) => {
+// El front manda: { nombres, apellidos, email, username, password, role, adminCode? }
+const register = async ({ nombres, apellidos, email, username, password, role, adminCode }) => {
 
-  // Verificamos si ya existe un usuario con ese email
-  // No queremos dos cuentas con el mismo email
-  const existingUser = await authRepository.findByEmail(email)
-  if (existingUser) {
+  // Verificamos que el email no esté ya registrado
+  const existingEmail = await authRepository.findByEmail(email)
+  if (existingEmail) {
     throw new Error('El email ya está registrado')
   }
 
-  // Encriptamos la contraseña antes de guardarla en la BD
-  // El 10 es el "salt rounds": cuántas veces se procesa el hash
-  // 10 es el estándar recomendado (seguro sin ser lento)
+  // Verificamos que el username no esté ya tomado
+  const existingUsername = await authRepository.findByUsername(username)
+  if (existingUsername) {
+    throw new Error('El username ya está en uso')
+  }
+
+  // Si el rol es admin, verificamos el código secreto
+  // Esto evita que cualquiera se registre como admin
+  if (role === 'admin') {
+    if (!adminCode || adminCode !== ADMIN_CODE) {
+      throw new Error('Código de administrador incorrecto')
+    }
+  }
+
+  // Solo permitimos roles válidos según el reporte
+  const validRoles = ['usuario', 'admin']
+  const userRole = validRoles.includes(role) ? role : 'usuario'
+
+  // Encriptamos la contraseña antes de guardarla
+  // 10 salt rounds es el estándar recomendado
   const hashedPassword = await bcrypt.hash(password, 10)
 
-  // Guardamos el usuario con la contraseña encriptada
+  // name es nombres + apellidos concatenados
+  // El front lo usa para mostrar el nombre completo
+  const name = `${nombres} ${apellidos}`
+
+  // Guardamos el usuario en la BD
   const user = await authRepository.create({
+    nombres,
+    apellidos,
     name,
     email,
-    password: hashedPassword
+    username,
+    password: hashedPassword,
+    role: userRole
   })
 
-  // Devolvemos el usuario sin la contraseña por seguridad
-  // El _ descarta el campo password del objeto
-  const { password: _, ...userWithoutPassword } = user
-  return userWithoutPassword
+  // Devolvemos el usuario con el id formateado como "u-1"
+  // El front espera este formato según el reporte
+  return formatUser(user)
 }
 
 // ─────────────────────────────
 // LOGIN
 // ─────────────────────────────
-// Verifica credenciales y devuelve un token JWT si son correctas
-const login = async ({ email, password }) => {
+// El front manda: { identifier, password }
+// identifier puede ser email O username
+const login = async ({ identifier, password }) => {
 
-  // Buscamos si existe un usuario con ese email
-  const user = await authRepository.findByEmail(email)
+  // Buscamos el usuario por email o username
+  // El reporte dice que identifier puede ser cualquiera de los dos
+  const user = await authRepository.findByEmailOrUsername(identifier)
   if (!user) {
-    // Mensaje genérico intencionalmente: no revelamos si el email existe
-    // Esto evita que un atacante pueda enumerar emails válidos
+    // Mensaje genérico intencionalmente para no revelar si el email/username existe
     throw new Error('Credenciales incorrectas')
   }
 
-  // Comparamos la contraseña recibida con la encriptada en la BD
-  // bcrypt.compare hace esto de forma segura sin desencriptar
+  // Verificamos que el usuario esté activo
+  if (user.status === 'Inactivo') {
+    throw new Error('Tu cuenta está inactiva')
+  }
+
+  // Comparamos la contraseña con la encriptada en la BD
   const isPasswordValid = await bcrypt.compare(password, user.password)
   if (!isPasswordValid) {
     throw new Error('Credenciales incorrectas')
   }
 
-  // Generamos un token JWT con los datos del usuario
-  // Este token lo usará el frontend para identificarse en cada petición
+  // Generamos el token JWT con los datos del usuario
   const token = jwt.sign(
-    // Payload: datos guardados dentro del token
-    { id: user.id, email: user.email, role: user.role },
-    // Secret: clave para firmar el token, viene del .env
+    { id: user.id, email: user.email, role: user.role, username: user.username },
     process.env.JWT_SECRET,
-    // El token expira en 24 horas por seguridad
     { expiresIn: '24h' }
   )
 
-  // Devolvemos el token y los datos del usuario sin contraseña
-  const { password: _, ...userWithoutPassword } = user
-  return { token, user: userWithoutPassword }
+  return { token, user: formatUser(user) }
+}
+
+// ─────────────────────────────
+// HELPER: FORMATEAR USUARIO
+// ─────────────────────────────
+// El front espera el id como string "u-1", "u-2"
+// También nunca devolvemos la contraseña
+const formatUser = (user) => {
+  const { password, ...rest } = user
+  return {
+    ...rest,
+    id: `u-${user.id}`,         // convierte 1 → "u-1"
+    games: [],                   // array de gameIds, se llena con inscripciones
+    createdAt: user.createdAt.toISOString()
+  }
 }
 
 export { register, login }

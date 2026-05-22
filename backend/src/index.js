@@ -2,15 +2,11 @@
 // PUNTO DE ENTRADA DEL SERVIDOR
 // =============================
 
-// ¿Qué hace este archivo?
-// Es el archivo principal que arranca el servidor.
-// Aquí se configuran todos los middlewares y se registran las rutas.
-// Piensa en él como el "director de orquesta" de todo el backend.
-
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
+import morgan from 'morgan'
 import 'dotenv/config'
 import authRoutes from './routes/auth.routes.js'
 
@@ -22,7 +18,6 @@ const PORT = process.env.PORT || 3000
 // ─────────────────────────────
 
 // Helmet agrega cabeceras HTTP seguras automáticamente
-// Protege contra XSS, clickjacking y otros ataques comunes
 app.use(helmet())
 
 // Rate limiting: máximo 100 peticiones por IP cada 15 minutos
@@ -38,11 +33,15 @@ app.use(limiter)
 // MIDDLEWARES GENERALES
 // ─────────────────────────────
 
-// CORS permite que el frontend (puerto 5173) pueda hacer
-// peticiones a este backend (puerto 3000) sin ser bloqueado
+// Morgan registra cada petición en la terminal
+// formato "dev": método, ruta, status, tiempo de respuesta
+// Ejemplo: POST /api/auth/login 401 2.345 ms
+app.use(morgan('dev'))
+
+// CORS permite que el frontend (puerto 5173) haga peticiones al backend
 app.use(cors())
 
-// express.json() permite leer el body de las peticiones en formato JSON
+// express.json() permite leer el body en formato JSON
 // Sin esto req.body sería undefined
 app.use(express.json())
 
@@ -50,7 +49,7 @@ app.use(express.json())
 // RUTAS
 // ─────────────────────────────
 
-// Ruta de prueba para verificar que el servidor está vivo
+// Ruta de prueba
 app.get('/', (req, res) => {
   res.json({ message: 'Backend ISC-PLAYGROUND funcionando ✅' })
 })

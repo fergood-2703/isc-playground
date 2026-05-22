@@ -2,13 +2,11 @@
 // CONTROLADOR DE AUTENTICACIÓN
 // =============================
 
-// ¿Qué hace un controlador?
 // Es el intermediario entre la petición HTTP y la lógica de negocio.
 // Su única responsabilidad es:
 // 1. Recibir la petición (req)
 // 2. Llamar al servicio que hace el trabajo real
 // 3. Devolver la respuesta (res)
-// El controlador NO procesa datos ni habla con la BD, eso es trabajo del servicio.
 
 import * as authService from '../services/auth.service.js'
 
@@ -16,24 +14,20 @@ import * as authService from '../services/auth.service.js'
 // REGISTRO DE NUEVO USUARIO
 // ─────────────────────────────
 // Se activa cuando el frontend hace: POST /api/auth/register
-// Espera recibir en el body: { name, email, password }
+// El front manda: { nombres, apellidos, email, username, password, role, adminCode? }
 const register = async (req, res) => {
   try {
-    // req.body contiene los datos que mandó el frontend
-    const { name, email, password } = req.body
+    const { nombres, apellidos, email, username, password, role, adminCode } = req.body
 
-    // Delegamos el trabajo al servicio:
-    // él encripta la contraseña, verifica duplicados y guarda en BD
-    const user = await authService.register({ name, email, password })
+    const user = await authService.register({
+      nombres, apellidos, email, username, password, role, adminCode
+    })
 
-    // 201 = "Created", significa que algo se creó exitosamente
     res.status(201).json({
       message: 'Usuario registrado exitosamente',
       user
     })
   } catch (error) {
-    // Si el servicio lanza un error (ej: email ya existe)
-    // lo capturamos y respondemos con 400 Bad Request
     res.status(400).json({ error: error.message })
   }
 }
@@ -42,13 +36,13 @@ const register = async (req, res) => {
 // LOGIN DE USUARIO EXISTENTE
 // ─────────────────────────────
 // Se activa cuando el frontend hace: POST /api/auth/login
-// Espera recibir en el body: { email, password }
+// El front manda: { identifier, password }
+// identifier puede ser email O username
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body
+    const { identifier, password } = req.body
 
-    // El servicio verifica credenciales y devuelve token + usuario
-    const result = await authService.login({ email, password })
+    const result = await authService.login({ identifier, password })
 
     // 200 = "OK", la petición fue exitosa
     res.status(200).json({
@@ -56,7 +50,6 @@ const login = async (req, res) => {
       ...result
     })
   } catch (error) {
-    // 401 = "Unauthorized", credenciales incorrectas
     res.status(401).json({ error: error.message })
   }
 }

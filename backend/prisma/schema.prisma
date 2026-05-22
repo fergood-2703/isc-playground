@@ -1,30 +1,182 @@
-// Este archivo define la estructura de la base de datos
-// Prisma lo usa para generar las tablas y el cliente de BD
+// =============================
+// SCHEMA DE BASE DE DATOS
+// =============================
+// Define todas las tablas del sistema ISC Playground
+// Cada model = una tabla en PostgreSQL
 
 generator client {
   provider = "prisma-client-js"
 }
 
-// Conexión a PostgreSQL usando la variable del .env
 datasource db {
   provider = "postgresql"
 }
 
 // =============================
-// MODELO DE USUARIO
+// USUARIO
 // =============================
 model User {
   id        Int      @id @default(autoincrement())
+  // El front espera recibir el id como string tipo "u-1"
+  // Lo manejaremos en el servicio al devolver la respuesta
+  nombres   String
+  apellidos String
+  name      String   // nombres + apellidos concatenados
+  username  String   @unique
   email     String   @unique
-  password  String
-  name      String
-  role      Role     @default(PLAYER)
+  password  String   // siempre encriptada, nunca se devuelve al front
+  role      String   @default("usuario") // valores: "usuario", "admin"
+  status    String   @default("Activo")  // valores: "Activo", "Inactivo"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Relaciones
+  registrations Registration[]
+  teamPlayers   TeamPlayer[]
 }
 
-// Roles disponibles en el sistema
-enum Role {
-  ADMIN
-  PLAYER
+// =============================
+// JUEGO
+// =============================
+model Game {
+  id          String  @id // slug: "bomb-squad", "counter-strike-16"
+  legacyId    Int     @unique // 1, 2, 3 — usado en rutas /juego/:id
+  name        String
+  shortName   String
+  image       String
+  accent      String  // color hex: "#06b6d4"
+  teamSize    String  // "5v5", "4 jugadores"
+  duration    String  // "5 min", "Run cronometrada"
+  format      String
+  status      String  @default("Activo") // "Activo", "Desactivado", "En bracket", "Clasificatorio"
+  description String
+  pointFormula String
+  winCondition String
+  maxPlayers  String
+  matchType   String
+  maps        String[] // array de strings ["de_dust2", "de_inferno"]
+  visualMetrics String[] // keys de métricas a mostrar visualmente, máx 4
+
+  // Relaciones
+  scoringRules  ScoringRule[]
+  metrics       GameMetric[]
+  registrations Registration[]
+  teams         Team[]
+  matches       Match[]
+}
+
+// Reglas de puntuación por juego
+model ScoringRule {
+  id        Int    @id @default(autoincrement())
+  gameId    String
+  key       String // métrica por la que se ordena: "kills", "roundsWon"
+  label     String // texto legible: "Mayor número de kills"
+  direction String // "asc" o "desc"
+  order     Int    // para mantener el orden de prioridad
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+}
+
+// Métricas por juego
+model GameMetric {
+  id           Int    @id @default(autoincrement())
+  gameId       String
+  key          String // "kills", "bossesDefeated"
+  label        String // "Kills", "Bosses"
+  type         String @default("number")
+  defaultValue Float  @default(0)
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+}
+
+// =============================
+// INSCRIPCIÓN
+// =============================
+model Registration {
+  id           String   @id @default(cuid())
+  userId       Int
+  gameId       String
+  status       String   @default("inscrito") // "inscrito", "en torneo"
+  registeredAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameId]) // un usuario no puede inscribirse dos veces al mismo juego
+}
+
+// =============================
+// EQUIPO
+// =============================
+model Team {
+  id      String @id // "team-neon"
+  name    String
+  tag     String // "NS", "CSA" máx 3 chars
+  type    String @default("Temporal")
+  status  String @default("Activo") // "Activo", "Cerrado"
+  matchId String? // puede ser null
+  gameId  String
+
+  game        Game         @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  players     TeamPlayer[]
+  teamResults TeamResult[]
+}
+
+// Tabla pivot: jugadores en equipos
+model TeamPlayer {
+  id       Int    @id @default(autoincrement())
+  teamId   String
+  userId   Int
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId]) // un jugador no puede estar dos veces en el mismo equipo
+}
+
+// =============================
+// PARTIDA
+// =============================
+model Match {
+  id          String   @id // "match-bs-1"
+  gameId      String
+  phaseType   String   // "Casual", "Clasificatoria", "Cuartos", "Semifinal", "Final"
+  stage       String   // "Clasificatoria 01", "Semifinal A"
+  map         String
+  status      String   @default("Pendiente") // "Pendiente", "En preparación", "En curso", "Finalizada", "Cancelada"
+  duration    Int      // duración estimada en minutos
+  scheduledAt DateTime
+
+  game          Game           @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  teamResults   TeamResult[]
+  playerResults PlayerResult[]
+}
+
+// Resultado por equipo en una partida
+model TeamResult {
+  id      Int    @id @default(autoincrement())
+  matchId String
+  teamId  String
+  stats   Json   // { kills: 10, roundsWon: 3, ... } depende del juego
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  team  Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, teamId])
+}
+
+// Resultado individual por jugador en una partida
+// Este es el más importante para el ranking
+model PlayerResult {
+  id       Int     @id @default(autoincrement())
+  matchId  String
+  playerId Int
+  teamId   String
+  points   Float   @default(0) // puntos asignados por el admin
+  won      Boolean @default(false)
+  stats    Json    // { kills: 5, deaths: 2, ... } depende del juego
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, playerId])
 }
