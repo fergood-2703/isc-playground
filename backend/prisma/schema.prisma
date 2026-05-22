@@ -1,0 +1,30 @@
+// Este archivo define la estructura de la base de datos
+// Prisma lo usa para generar las tablas y el cliente de BD
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Conexión a PostgreSQL usando la variable del .env
+datasource db {
+  provider = "postgresql"
+}
+
+// =============================
+// MODELO DE USUARIO
+// =============================
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(PLAYER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Roles disponibles en el sistema
+enum Role {
+  ADMIN
+  PLAYER
+}
