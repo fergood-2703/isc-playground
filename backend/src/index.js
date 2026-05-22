@@ -13,6 +13,7 @@ import userRoutes from './routes/user.routes.js'
 import gameRoutes from './routes/game.routes.js'
 import registrationRoutes from './routes/registration.routes.js'
 import teamRoutes from './routes/team.routes.js'
+import matchRoutes from './routes/match.routes.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -93,6 +94,14 @@ app.use('/api/registrations', registrationRoutes)
 // POST   /api/teams/:id/players      → agregar jugador
 // DELETE /api/teams/:id/players/:pid → quitar jugador
 app.use('/api/teams', teamRoutes)
+
+// Rutas de partidas
+// GET   /api/matches?gameId=       → partidas de un juego
+// POST  /api/matches               → crear partida
+// PATCH /api/matches/:id/status    → cambiar estado
+// POST  /api/matches/:id/results   → guardar resultado de jugador
+// PATCH /api/matches/:id/live      → actualizar métrica en tiempo real
+app.use('/api/matches', matchRoutes)
 
 // ─────────────────────────────
 // ARRANCAR SERVIDOR
