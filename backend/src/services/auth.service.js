@@ -14,6 +14,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import * as authRepository from '../repositories/auth.repository.js'
 import { formatUser } from '../utils/helpers.js'
+import { securityLog } from '../middlewares/logger.middleware.js'
 
 
 // ─────────────────────────────
