@@ -18,16 +18,17 @@ const extractNumericId = (id) => {
 }
 
 // ─────────────────────────────
-// FORMATEAR USUARIO
+// HELPER: FORMATEAR USUARIO
 // ─────────────────────────────
-// Nunca devuelve la contraseña
-// Convierte el id a "u-1"
-// Construye el array games desde las inscripciones
+// El front espera el id como string "u-1", "u-2"
+// games se construye desde las inscripciones reales
+// La contraseña nunca se devuelve
 const formatUser = (user) => {
   const { password, ...rest } = user
   return {
     ...rest,
     id: `u-${user.id}`,
+    // Usamos las inscripciones reales en lugar de hardcodear []
     games: user.registrations?.map(r => r.gameId) || [],
     createdAt: user.createdAt.toISOString()
   }

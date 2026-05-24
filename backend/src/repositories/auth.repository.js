@@ -40,6 +40,12 @@ const findByEmailOrUsername = async (identifier) => {
         { email: identifier },
         { username: identifier }
       ]
+    },
+    // Incluimos las inscripciones para devolver games correcto
+    include: {
+      registrations: {
+        select: { gameId: true }
+      }
     }
   })
 }
@@ -51,14 +57,15 @@ const findByEmailOrUsername = async (identifier) => {
 const create = async ({ nombres, apellidos, name, email, username, password, role }) => {
   return await prisma.user.create({
     data: {
-      nombres,
-      apellidos,
-      name,
-      email,
-      username,
-      password,
-      role,
-      status: 'Activo' // todo usuario nuevo empieza activo
+      nombres, apellidos, name, email,
+      username, password, role,
+      status: 'Activo'
+    },
+    // Incluimos las inscripciones aunque estén vacías al crear
+    include: {
+      registrations: {
+        select: { gameId: true }
+      }
     }
   })
 }

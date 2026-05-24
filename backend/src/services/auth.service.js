@@ -15,15 +15,12 @@ import jwt from 'jsonwebtoken'
 import * as authRepository from '../repositories/auth.repository.js'
 import { formatUser } from '../utils/helpers.js'
 
-// Código secreto que valida si alguien puede registrarse como admin
-// En producción esto debería ser una variable de entorno
-const ADMIN_CODE = process.env.ADMIN_CODE
 
 // ─────────────────────────────
 // REGISTRO
 // ─────────────────────────────
 // El front manda: { nombres, apellidos, email, username, password, role, adminCode? }
-const register = async ({ nombres, apellidos, email, username, password, role, adminCode }) => {
+const register = async ({ nombres, apellidos, email, username, password}) => {
 
   // Verificamos que el email no esté ya registrado
   const existingEmail = await authRepository.findByEmail(email)
@@ -37,17 +34,11 @@ const register = async ({ nombres, apellidos, email, username, password, role, a
     throw new Error('El username ya está en uso')
   }
 
-  // Si el rol es admin, verificamos el código secreto
-  // Esto evita que cualquiera se registre como admin
-  if (role === 'admin') {
-    if (!adminCode || adminCode !== ADMIN_CODE) {
-      throw new Error('Código de administrador incorrecto')
-    }
-  }
 
-  // Solo permitimos roles válidos según el reporte
-  const validRoles = ['usuario', 'admin']
-  const userRole = validRoles.includes(role) ? role : 'usuario'
+
+  // Todo usuario registrado públicamente es "usuario"
+  // Sin excepciones, sin códigos, sin flags
+const userRole = 'usuario'
 
   // Encriptamos la contraseña antes de guardarla
   // 10 salt rounds es el estándar recomendado

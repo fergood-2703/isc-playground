@@ -17,10 +17,10 @@ import * as authService from '../services/auth.service.js'
 // El front manda: { nombres, apellidos, email, username, password, role, adminCode? }
 const register = async (req, res) => {
   try {
-    const { nombres, apellidos, email, username, password, role, adminCode } = req.body
+    const { nombres, apellidos, email, username, password } = req.body
 
     const user = await authService.register({
-      nombres, apellidos, email, username, password, role, adminCode
+      nombres, apellidos, email, username, password
     })
 
     res.status(201).json({
