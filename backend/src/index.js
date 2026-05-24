@@ -15,6 +15,7 @@ import registrationRoutes from './routes/registration.routes.js'
 import teamRoutes from './routes/team.routes.js'
 import matchRoutes from './routes/match.routes.js'
 import rankingRoutes from './routes/ranking.routes.js'
+import { errorHandler } from './middlewares/error.middleware.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -26,7 +27,7 @@ const PORT = process.env.PORT || 3000
 // Helmet agrega cabeceras HTTP seguras automáticamente
 app.use(helmet())
 
-// Rate limiting: máximo 100 peticiones por IP cada 15 minutos
+// Rate limiting GLOBAL: máximo 100 peticiones por IP cada 15 minutos
 // Evita ataques de fuerza bruta al login y register
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -34,6 +35,8 @@ const limiter = rateLimit({
   message: { error: 'Demasiadas peticiones, intenta más tarde' }
 })
 app.use(limiter)
+
+
 
 // ─────────────────────────────
 // MIDDLEWARES GENERALES
@@ -44,8 +47,15 @@ app.use(limiter)
 // Ejemplo: POST /api/auth/login 401 2.345 ms
 app.use(morgan('dev'))
 
-// CORS permite que el frontend (puerto 5173) haga peticiones al backend
-app.use(cors())
+// CORS configurado específicamente para el frontend
+// Solo acepta peticiones del origen definido en .env
+// En desarrollo: http://localhost:5173
+// En producción: URL del servidor escolar
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}))
 
 // express.json() permite leer el body en formato JSON
 // Sin esto req.body sería undefined
@@ -104,10 +114,15 @@ app.use('/api/teams', teamRoutes)
 // PATCH /api/matches/:id/live      → actualizar métrica en tiempo real
 app.use('/api/matches', matchRoutes)
 
-//Ranking de partidas // peticiones pendientes///
-//-------
-//-------
+// Rutas de rankings
+// GET /api/rankings?gameId= → ranking por juego
+// GET /api/rankings/global  → leaderboard global
 app.use('/api/rankings', rankingRoutes)
+
+// MANEJO DE ERRORES GLOBAL
+// Siempre al final, después de todas las rutas
+// Express lo reconoce por tener 4 parámetros
+app.use(errorHandler)
 
 // ─────────────────────────────
 // ARRANCAR SERVIDOR

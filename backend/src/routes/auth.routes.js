@@ -10,6 +10,7 @@
 import express from 'express'
 import * as authController from '../controllers/auth.controller.js'
 import { validateRegister, validateLogin } from '../middlewares/validate.middleware.js'
+import { loginLimiter } from '../middlewares/rateLimit.middleware.js'
 
 // Router es una mini-aplicación de express que agrupa rutas relacionadas
 // Permite organizar endpoints por módulo (auth, users, tournaments, etc.)
@@ -20,6 +21,8 @@ const router = express.Router()
 router.post('/register', validateRegister, authController.register)
 
 // POST /api/auth/login → iniciar sesión
-router.post('/login', validateLogin, authController.login)
+// loginLimiter se aplica antes que todo para bloquear ataques de fuerza bruta
+// Si supera 5 intentos en 15 minutos, bloquea la IP
+router.post('/login', loginLimiter, validateLogin, authController.login)
 
 export default router
