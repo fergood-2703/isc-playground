@@ -1,0 +1,23 @@
+.users-admin { gap: 22px; }
+.profile-card { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start; }
+.profile-card > svg { color: #22d3ee; width: 42px; height: 42px; padding: 12px; border-radius: 18px; background: rgba(6, 182, 212, .12); }
+.profile-card h3, .profile-summary h3 { margin: 4px 0; font-size: 26px; }
+.profile-card p { color: #94a3b8; margin: 0; }
+.profile-card form { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
+.profile-card button { display: inline-flex; gap: 8px; align-items: center; justify-content: center; }
+.profile-summary { background: radial-gradient(circle at top right, rgba(124, 77, 255, .18), rgba(15, 23, 42, .86)); }
+.summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; }
+.summary-grid div { padding: 16px; border-radius: 18px; background: rgba(2, 6, 23, .48); border: 1px solid rgba(148, 163, 184, .1); }
+.summary-grid strong { display: block; font-size: 28px; }
+.summary-grid span { color: #94a3b8; }
+.rank-mini { display: inline-grid; place-items: center; min-width: 38px; height: 32px; border-radius: 12px; background: rgba(250, 204, 21, .18); color: #fde68a; font-weight: 900; }
+.users-table-card { overflow-x: auto; }
+@media (max-width: 900px) { .profile-card form { grid-template-columns: 1fr; } .summary-grid { grid-template-columns: 1fr; } }
+.admin-kpi-grid { display: grid; grid-template-columns: 1.3fr .7fr; gap: 16px; }
+.admin-actions-card .action-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.action-chips span { padding: 10px 12px; border-radius: 999px; background: rgba(6, 182, 212, .12); border: 1px solid rgba(103, 232, 249, .18); color: #cffafe; font-weight: 800; }
+.user-tools { align-items: end; }
+.search-box { min-width: 280px; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; background: rgba(15, 23, 42, .76); border: 1px solid rgba(148, 163, 184, .16); color: #94a3b8; }
+.search-box input { border: 0; background: transparent; color: white; outline: 0; width: 100%; }
+.users-table-card .danger-btn { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 900px) { .admin-kpi-grid { grid-template-columns: 1fr; } .search-box { min-width: 100%; } }
