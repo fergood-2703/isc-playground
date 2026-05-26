@@ -4,6 +4,7 @@ import "./Login.css";
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import logo from "../../assets/images/playground-logo.png";
 import api from "../../api/axios.js";
+import { useApp } from "../../context/AppContext.jsx";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const { updateCurrentUser } = useApp()
 
   const [formData, setFormData] = useState({
     identifier: "",
@@ -39,6 +41,9 @@ export default function Login() {
       // Guardamos el token y el usuario en localStorage
       localStorage.setItem("isc_token", token);
       localStorage.setItem("isc_user", JSON.stringify(user));
+
+      // Actualizamos el contexto directamente
+      updateCurrentUser(user)
 
       // Redirigimos según el rol
       if (user.role === "admin") {

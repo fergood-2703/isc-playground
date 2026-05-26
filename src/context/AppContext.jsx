@@ -1,6 +1,5 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
-  currentUser as mockedCurrentUser,
   gameConfigs as initialGameConfigs,
   initialMatches,
   initialPlayers,
@@ -14,10 +13,25 @@ import {
   calculateGlobalLeaderboard,
   createEmptyStats,
 } from "../utils/rankingEngine";
+import api from "../api/axios.js";
 
 const AppContext = createContext();
 
 const createId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
+
+// ─────────────────────────────
+// LEER USUARIO DEL LOCALSTORAGE
+// ─────────────────────────────
+// Cuando el usuario hace login, guardamos su info en localStorage
+// Aquí la leemos para inicializar el contexto con el usuario real
+const getUserFromStorage = () => {
+  try {
+    const stored = localStorage.getItem("isc_user")
+    return stored ? JSON.parse(stored) : null
+  } catch {
+    return null
+  }
+}
 
 export function AppProvider({ children }) {
   const [gameConfigs, setGameConfigs] = useState(initialGameConfigs);
@@ -25,7 +39,13 @@ export function AppProvider({ children }) {
   const [registrations, setRegistrations] = useState(initialRegistrations);
   const [teams, setTeams] = useState(initialTeams);
   const [matches, setMatches] = useState(initialMatches);
-  const [currentUser, setCurrentUser] = useState(mockedCurrentUser);
+
+  // ─────────────────────────────
+  // USUARIO ACTUAL
+  // ─────────────────────────────
+  // Usamos el usuario real del localStorage
+  // Si no hay usuario, es null (no autenticado)
+  const [currentUser, setCurrentUser] = useState(getUserFromStorage);
 
   const rankingsByGame = useMemo(
     () => calculateAllRankings({ gameConfigs, players, matches }),
@@ -274,11 +294,27 @@ export function AppProvider({ children }) {
     );
   };
 
+  // ─────────────────────────────
+  // ACTUALIZAR USUARIO ACTUAL
+  // ─────────────────────────────
+  // Actualiza el estado y también el localStorage
   const updateCurrentUser = (updates) => {
-    setCurrentUser((prev) => ({ ...prev, ...updates }));
-  };
+    setCurrentUser((prev) => {
+      const updated = { ...prev, ...updates }
+      localStorage.setItem("isc_user", JSON.stringify(updated))
+      return updated
+    })
+  }
 
-  const logout = () => setCurrentUser(null);
+  // ─────────────────────────────
+  // LOGOUT
+  // ─────────────────────────────
+  // Limpia el estado y el localStorage
+  const logout = () => {
+    localStorage.removeItem("isc_user")
+    localStorage.removeItem("isc_token")
+    setCurrentUser(null)
+  }
 
   const value = {
     currentUser,
