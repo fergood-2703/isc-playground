@@ -1,3 +1,4 @@
+import api from "../../api/axios.js";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -90,62 +91,37 @@ export default function Registro() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!validateForm()) return;
 
-    setIsLoading(true);
-    setApiError("");
+  setIsLoading(true);
+  setApiError("");
 
-    try {
-      const users = JSON.parse(localStorage.getItem("isc_users") || "[]");
-      const emailValue = form.email.trim().toLowerCase();
-      const usernameValue = form.username.trim().toLowerCase();
+  try {
+    // Llamada real al backend
+    const response = await api.post("/auth/register", {
+      nombres: form.nombres.trim(),
+      apellidos: form.apellidos.trim(),
+      email: form.email.trim(),
+      username: form.username.trim(),
+      password: form.password,
+    });
 
-      const exists = users.some((user) => {
-        const storedEmail = (user.email || "").toLowerCase();
-        const storedUsername = (user.username || user.identifier || "").toLowerCase();
-        const storedIdentifier = (user.identifier || "").toLowerCase();
+    setSuccessMessage(
+      response.data.user.role === "admin"
+        ? "Administrador registrado correctamente"
+        : "Usuario registrado correctamente"
+    );
 
-        return (
-          storedEmail === emailValue ||
-          storedUsername === usernameValue ||
-          storedIdentifier === emailValue ||
-          storedIdentifier === usernameValue
-        );
-      });
-
-      if (exists) {
-        setApiError("Este correo o username ya está registrado");
-        return;
-      }
-
-      const newUser = {
-        nombres: form.nombres.trim(),
-        apellidos: form.apellidos.trim(),
-        email: form.email.trim(),
-        username: form.username.trim(),
-        identifier: form.username.trim(),
-        password: form.password,
-        role: ROLES[roleType],
-        createdAt: new Date().toISOString(),
-      };
-
-      localStorage.setItem("isc_users", JSON.stringify([...users, newUser]));
-
-      setSuccessMessage(
-        roleType === "admin"
-          ? "Administrador registrado correctamente"
-          : "Usuario registrado correctamente",
-      );
-
-      setTimeout(() => navigate("/login"), 1200);
-    } catch {
-      setApiError("No se pudo guardar el registro en este equipo");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    setTimeout(() => navigate("/login"), 1200);
+  } catch (err) {
+    // Mostramos el error que devuelve el backend
+    setApiError(err.response?.data?.error || "Error al registrarse")
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="registro-page">
