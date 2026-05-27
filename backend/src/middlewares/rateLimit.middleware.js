@@ -15,7 +15,7 @@ import rateLimit from 'express-rate-limit'
 // porque el login es el endpoint más vulnerable a fuerza bruta
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 5,                    // máximo 5 intentos
+  max: 15,                    // máximo 30 intentos
   message: { error: 'Demasiados intentos de login, intenta en 15 minutos' }
 })
 

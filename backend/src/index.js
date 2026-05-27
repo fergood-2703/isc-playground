@@ -20,6 +20,20 @@ import { errorHandler } from './middlewares/error.middleware.js'
 const app = express()
 const PORT = process.env.PORT || 3000
 
+
+
+// ─────────────────────────────
+// 1. CORS — PRIMERO SIEMPRE
+// ─────────────────────────────
+// Debe ir antes de helmet y rate limiting
+// para que los preflights OPTIONS respondan correctamente
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}))
+
+
 // ─────────────────────────────
 // MIDDLEWARES DE SEGURIDAD
 // ─────────────────────────────
@@ -47,15 +61,6 @@ app.use(limiter)
 // Ejemplo: POST /api/auth/login 401 2.345 ms
 app.use(morgan('dev'))
 
-// CORS configurado específicamente para el frontend
-// Solo acepta peticiones del origen definido en .env
-// En desarrollo: http://localhost:5173
-// En producción: URL del servidor escolar
-app.use(cors({
-  origin: process.env.FRONTEND_URL,
-  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}))
 
 // express.json() permite leer el body en formato JSON
 // Sin esto req.body sería undefined
