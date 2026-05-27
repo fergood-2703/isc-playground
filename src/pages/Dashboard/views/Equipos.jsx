@@ -1,61 +1,80 @@
-import { useMemo, useState } from "react";
-import { Play, Plus, Search, Trash2, UserMinus, UserPlus } from "lucide-react";
-import { useApp } from "../../../context/AppContext";
-import "./Equipos.css";
+import { useMemo, useState } from "react"
+import { Play, Plus, Search, Trash2, UserMinus, UserPlus } from "lucide-react"
+import { useApp } from "../../../context/AppContext"
+import "./Equipos.css"
 
 export default function Equipos() {
   const {
-    gameConfigs,
-    players,
-    teams,
-    matches,
-    createTeam,
-    updateTeam,
-    deleteTeam,
-    assignPlayerToTeam,
-    removePlayerFromTeam,
+    gameConfigs, players, teams, matches, loading,
+    createTeam, updateTeam, deleteTeam,
+    assignPlayerToTeam, removePlayerFromTeam,
     getRegisteredPlayers,
-  } = useApp();
-  const [selectedGameId, setSelectedGameId] = useState(gameConfigs[0].id);
-  const [search, setSearch] = useState("");
-  const [selectedPlayerIds, setSelectedPlayerIds] = useState([]);
-  const [teamName, setTeamName] = useState("Equipo Alpha");
+  } = useApp()
 
-  const selectedGame = gameConfigs.find((game) => game.id === selectedGameId) ?? gameConfigs[0];
-  const gameTeams = teams.filter((team) => team.gameId === selectedGameId);
-  const activeTeams = gameTeams.filter((team) => team.status === "Activo");
-  const playersById = useMemo(() => Object.fromEntries(players.map((player) => [player.id, player])), [players]);
-  const busyPlayerIds = useMemo(
-    () => new Set(activeTeams.flatMap((team) => team.playerIds)),
-    [activeTeams]
-  );
-  const registeredPlayers = getRegisteredPlayers(selectedGameId);
+  // Guard: mientras carga o no hay juegos aún
+  if (loading || !gameConfigs.length) {
+    return <div className="admin-page"><p>Cargando juegos...</p></div>
+  }
+
+  return <EquiposInner
+    gameConfigs={gameConfigs} players={players} teams={teams}
+    matches={matches} createTeam={createTeam} updateTeam={updateTeam}
+    deleteTeam={deleteTeam} assignPlayerToTeam={assignPlayerToTeam}
+    removePlayerFromTeam={removePlayerFromTeam} getRegisteredPlayers={getRegisteredPlayers}
+  />
+}
+
+// Componente interno — solo se monta cuando gameConfigs ya tiene datos
+// Así el useState inicial siempre tiene un valor válido
+function EquiposInner({
+  gameConfigs, players, teams, matches,
+  createTeam, updateTeam, deleteTeam,
+  assignPlayerToTeam, removePlayerFromTeam, getRegisteredPlayers,
+}) {
+  const [selectedGameId, setSelectedGameId] = useState(gameConfigs[0].id)
+  const [search, setSearch] = useState("")
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState([])
+  const [teamName, setTeamName] = useState("Equipo Alpha")
+
+  const selectedGame = gameConfigs.find((game) => game.id === selectedGameId) ?? gameConfigs[0]
+  const gameTeams = teams.filter((team) => team.gameId === selectedGameId)
+  const activeTeams = gameTeams.filter((team) => team.status === "Activo")
+  const playersById = useMemo(() => Object.fromEntries(players.map((player) => [player.id, player])), [players])
+  const busyPlayerIds = useMemo(() => new Set(activeTeams.flatMap((team) => team.playerIds)), [activeTeams])
+  const registeredPlayers = getRegisteredPlayers(selectedGameId)
   const filteredPlayers = registeredPlayers.filter((player) =>
     `${player.name} ${player.username}`.toLowerCase().includes(search.toLowerCase())
-  );
-  const availablePlayers = registeredPlayers.filter((player) => !busyPlayerIds.has(player.id));
-  const activeMatches = matches.filter((match) => match.gameId === selectedGameId && ["Pendiente", "En preparación", "En curso"].includes(match.status));
+  )
+  const availablePlayers = registeredPlayers.filter((player) => !busyPlayerIds.has(player.id))
+  const activeMatches = matches.filter((match) =>
+    match.gameId === selectedGameId &&
+    ["Pendiente", "En preparación", "En curso"].includes(match.status)
+  )
 
   const togglePlayer = (playerId) => {
-    if (busyPlayerIds.has(playerId)) return;
+    if (busyPlayerIds.has(playerId)) return
     setSelectedPlayerIds((prev) =>
       prev.includes(playerId) ? prev.filter((id) => id !== playerId) : [...prev, playerId]
-    );
-  };
+    )
+  }
 
   const handleCreateTeam = (event) => {
-    event.preventDefault();
-    if (!teamName.trim()) return;
-    createTeam({ name: teamName, tag: teamName.slice(0, 3).toUpperCase(), gameId: selectedGameId, playerIds: selectedPlayerIds });
-    setTeamName("");
-    setSelectedPlayerIds([]);
-  };
+    event.preventDefault()
+    if (!teamName.trim()) return
+    createTeam({
+      name: teamName,
+      tag: teamName.slice(0, 3).toUpperCase(),
+      gameId: selectedGameId,
+      playerIds: selectedPlayerIds,
+    })
+    setTeamName("")
+    setSelectedPlayerIds([])
+  }
 
-  const movePlayer = (teamId, playerId) => {
-    if (assignPlayerToTeam(teamId, playerId)) {
-      setSelectedPlayerIds((prev) => prev.filter((id) => id !== playerId));
-    }
-  };
+  const movePlayer = async (teamId, playerId) => {
+    const ok = await assignPlayerToTeam(teamId, playerId)
+    if (ok) setSelectedPlayerIds((prev) => prev.filter((id) => id !== playerId))
+  }
 
   return (
     <div className="admin-page teams-admin">
@@ -69,7 +88,12 @@ export default function Equipos() {
 
       <div className="game-switcher">
         {gameConfigs.map((game) => (
-          <button className={game.id === selectedGameId ? "active" : ""} key={game.id} onClick={() => { setSelectedGameId(game.id); setSelectedPlayerIds([]); }} style={{ "--accent": game.accent }}>
+          <button
+            className={game.id === selectedGameId ? "active" : ""}
+            key={game.id}
+            onClick={() => { setSelectedGameId(game.id); setSelectedPlayerIds([]) }}
+            style={{ "--accent": game.accent }}
+          >
             <img src={game.image} alt={game.name} />
             <span>{game.name}</span>
           </button>
@@ -104,16 +128,22 @@ export default function Equipos() {
           </label>
           <div className="registered-admin-list">
             {filteredPlayers.map((player) => {
-              const isBusy = busyPlayerIds.has(player.id);
-              const isSelected = selectedPlayerIds.includes(player.id);
+              const isBusy = busyPlayerIds.has(player.id)
+              const isSelected = selectedPlayerIds.includes(player.id)
               return (
-                <button key={player.id} type="button" className={`${isBusy ? "busy" : ""} ${isSelected ? "selected" : ""}`} onClick={() => togglePlayer(player.id)}>
+                <button
+                  key={player.id}
+                  type="button"
+                  className={`${isBusy ? "busy" : ""} ${isSelected ? "selected" : ""}`}
+                  onClick={() => togglePlayer(player.id)}
+                >
                   <strong>{player.name}</strong>
                   <span>@{player.username} · {player.registrationStatus}</span>
                   <em>{isBusy ? "En equipo" : isSelected ? "Seleccionado" : "Disponible"}</em>
                 </button>
-              );
+              )
             })}
+            {filteredPlayers.length === 0 && <p>No hay jugadores inscritos en este juego.</p>}
           </div>
         </section>
 
@@ -144,7 +174,10 @@ export default function Equipos() {
             <header>
               <div className="team-avatar">{team.tag}</div>
               <div>
-                <input value={team.name} onChange={(event) => updateTeam(team.id, { name: event.target.value })} />
+                <input
+                  value={team.name}
+                  onChange={(event) => updateTeam(team.id, { name: event.target.value })}
+                />
                 <span>{team.type} · {team.status} · {selectedGame.shortName}</span>
               </div>
               <button className="danger-btn" onClick={() => deleteTeam(team.id)}><Trash2 size={16} /></button>
@@ -152,7 +185,9 @@ export default function Equipos() {
 
             <div className="quick-move-list">
               {availablePlayers.map((player) => (
-                <button key={player.id} type="button" onClick={() => movePlayer(team.id, player.id)}><UserPlus size={13} /> {player.username}</button>
+                <button key={player.id} type="button" onClick={() => movePlayer(team.id, player.id)}>
+                  <UserPlus size={13} /> {player.username}
+                </button>
               ))}
             </div>
 
@@ -161,16 +196,21 @@ export default function Equipos() {
                 <div key={playerId}>
                   <strong>{playersById[playerId]?.name}</strong>
                   <span>@{playersById[playerId]?.username}</span>
-                  <button type="button" onClick={() => removePlayerFromTeam(team.id, playerId)}><UserMinus size={14} /></button>
+                  <button type="button" onClick={() => removePlayerFromTeam(team.id, playerId)}>
+                    <UserMinus size={14} />
+                  </button>
                 </div>
               ))}
               {team.playerIds.length === 0 && <p>Sin jugadores asignados.</p>}
             </div>
 
-            <button className="ghost-btn start-match-hint"><Play size={15} /> Usar en Partidas → Crear partida</button>
+            <button className="ghost-btn start-match-hint">
+              <Play size={15} /> Usar en Partidas → Crear partida
+            </button>
           </article>
         ))}
+        {gameTeams.length === 0 && <p>No hay equipos para este juego aún.</p>}
       </section>
     </div>
-  );
+  )
 }

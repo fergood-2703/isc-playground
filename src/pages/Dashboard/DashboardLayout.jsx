@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
-import "./Dashboard.css";
-import logo from "../../assets/images/playground-logo.png";
+import { useState } from "react"
+import { NavLink, Outlet, useNavigate } from "react-router-dom"
+import "./Dashboard.css"
+import logo from "../../assets/images/playground-logo.png"
 
 import {
   Activity,
@@ -10,26 +10,35 @@ import {
   LayoutDashboard,
   Menu,
   ShieldCheck,
+  ShieldPlus,
   Swords,
   Trophy,
   Users,
-} from "lucide-react";
-import { useApp } from "../../context/AppContext";
+  LogOut,
+} from "lucide-react"
+import { useApp } from "../../context/AppContext"
 
 export default function DashboardLayout() {
-  const { currentUser, matches } = useApp();
-  const activeUser = currentUser ?? { username: "guest", role: "Operador" };
-  const [open, setOpen] = useState(true);
-  const liveMatches = matches.filter((match) => match.status === "En curso").length;
+  const { currentUser, matches, logout } = useApp()
+  const navigate = useNavigate()
+  const activeUser = currentUser ?? { username: "guest", role: "Operador" }
+  const [open, setOpen] = useState(true)
+  const liveMatches = matches.filter((match) => match.status === "En curso").length
 
   const menu = [
-    { name: "Control", icon: <LayoutDashboard size={18} />, path: "/admin" },
-    { name: "Juegos", icon: <Gamepad2 size={18} />, path: "/admin/juegos" },
-    { name: "Partidas", icon: <CalendarClock size={18} />, path: "/admin/partidas" },
-    { name: "Equipos", icon: <Swords size={18} />, path: "/admin/equipos" },
-    { name: "Rankings", icon: <Trophy size={18} />, path: "/admin/ranking" },
-    { name: "Usuarios", icon: <Users size={18} />, path: "/admin/usuarios" },
-  ];
+    { name: "Control",      icon: <LayoutDashboard size={18} />, path: "/admin" },
+    { name: "Juegos",       icon: <Gamepad2 size={18} />,        path: "/admin/juegos" },
+    { name: "Partidas",     icon: <CalendarClock size={18} />,   path: "/admin/partidas" },
+    { name: "Equipos",      icon: <Swords size={18} />,          path: "/admin/equipos" },
+    { name: "Rankings",     icon: <Trophy size={18} />,          path: "/admin/ranking" },
+    { name: "Usuarios",     icon: <Users size={18} />,           path: "/admin/usuarios" },
+    { name: "Crear admin",  icon: <ShieldPlus size={18} />,      path: "/admin/crear-admin" },
+  ]
+
+  const handleLogout = () => {
+    logout()
+    navigate("/")
+  }
 
   return (
     <div className="dashboard">
@@ -82,6 +91,13 @@ export default function DashboardLayout() {
               <strong>{activeUser.username}</strong>
               <span>{activeUser.role}</span>
             </div>
+            <button
+              onClick={handleLogout}
+              title="Cerrar sesión"
+              style={{ background: "none", border: "none", cursor: "pointer", color: "inherit", marginLeft: "8px" }}
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </header>
 
@@ -90,5 +106,5 @@ export default function DashboardLayout() {
         </main>
       </div>
     </div>
-  );
+  )
 }
