@@ -1,29 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import {
-  gameConfigs as initialGameConfigs,
-  initialMatches,
-  initialPlayers,
-  initialRegistrations,
-  initialTeams,
-  matchStatuses,
-  tournamentPhases,
-} from "../data/tournament";
-import {
-  calculateAllRankings,
-  calculateGlobalLeaderboard,
-  createEmptyStats,
-} from "../utils/rankingEngine";
-import api from "../api/axios.js";
+import { createContext, useContext, useCallback, useEffect, useState } from "react"
+import { tournamentPhases, matchStatuses } from "../data/tournament"
+import api from "../api/axios.js"
 
-const AppContext = createContext();
-
-const createId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
+const AppContext = createContext()
 
 // ─────────────────────────────
 // LEER USUARIO DEL LOCALSTORAGE
 // ─────────────────────────────
-// Cuando el usuario hace login, guardamos su info en localStorage
-// Aquí la leemos para inicializar el contexto con el usuario real
 const getUserFromStorage = () => {
   try {
     const stored = localStorage.getItem("isc_user")
@@ -34,289 +17,346 @@ const getUserFromStorage = () => {
 }
 
 export function AppProvider({ children }) {
-  const [gameConfigs, setGameConfigs] = useState(initialGameConfigs);
-  const [players, setPlayers] = useState(initialPlayers);
-  const [registrations, setRegistrations] = useState(initialRegistrations);
-  const [teams, setTeams] = useState(initialTeams);
-  const [matches, setMatches] = useState(initialMatches);
+  // ─────────────────────────────
+  // ESTADO PRINCIPAL
+  // ─────────────────────────────
+  // Arranca vacío — se llena desde el backend
+  const [currentUser, setCurrentUser] = useState(getUserFromStorage)
+  const [gameConfigs, setGameConfigs] = useState([])
+  const [players, setPlayers] = useState([])
+  const [registrations, setRegistrations] = useState([])
+  const [teams, setTeams] = useState([])
+  const [matches, setMatches] = useState([])
+  const [rankingsByGame, setRankingsByGame] = useState({})
+  const [globalLeaderboard, setGlobalLeaderboard] = useState([])
+  const [loading, setLoading] = useState(true)
 
   // ─────────────────────────────
-  // USUARIO ACTUAL
+  // CARGA INICIAL DE DATOS
   // ─────────────────────────────
-  // Usamos el usuario real del localStorage
-  // Si no hay usuario, es null (no autenticado)
-  const [currentUser, setCurrentUser] = useState(getUserFromStorage);
+  // Se ejecuta al montar el provider
+  // Carga todos los datos del backend en paralelo
+  const loadAll = useCallback(async () => {
+    try {
+      setLoading(true)
 
-  const rankingsByGame = useMemo(
-    () => calculateAllRankings({ gameConfigs, players, matches }),
-    [gameConfigs, players, matches]
-  );
+      // Juegos y usuarios — siempre públicos
+      const [gamesRes, usersRes, globalRes] = await Promise.all([
+        api.get("/games"),
+        api.get("/users"),
+        api.get("/rankings/global")
+      ])
 
-  const globalLeaderboard = useMemo(
-    () => calculateGlobalLeaderboard({ rankingsByGame }),
-    [rankingsByGame]
-  );
+      const games = gamesRes.data.games ?? []
+      setGameConfigs(games)
+      setPlayers(usersRes.data.users ?? [])
+      setGlobalLeaderboard(globalRes.data.ranking ?? [])
 
-  const createTeam = ({ name, tag, gameId, playerIds = [], matchId = null }) => {
-    const id = createId("team");
-    const enrolledIds = new Set(getRegisteredPlayers(gameId).map((player) => player.id));
-    const availablePlayerIds = playerIds.filter((playerId) =>
-      enrolledIds.has(playerId) &&
-      !teams.some((team) => team.gameId === gameId && team.status === "Activo" && team.playerIds.includes(playerId))
-    );
+      // Equipos, partidas y rankings por cada juego en paralelo
+      if (games.length > 0) {
+        const perGameResults = await Promise.all(
+          games.map(game =>
+            Promise.all([
+              api.get(`/teams?gameId=${game.id}`),
+              api.get(`/matches?gameId=${game.id}`),
+              api.get(`/rankings?gameId=${game.id}`)
+            ]).then(([teamsRes, matchesRes, rankingRes]) => ({
+              gameId: game.id,
+              teams: teamsRes.data.teams ?? [],
+              matches: matchesRes.data.matches ?? [],
+              ranking: rankingRes.data.ranking ?? []
+            }))
+          )
+        )
 
-    const newTeam = {
-      id,
-      name,
-      tag: tag || name.slice(0, 3).toUpperCase(),
-      type: "Temporal",
-      status: "Activo",
-      matchId,
-      gameId,
-      playerIds: availablePlayerIds,
-    };
+        const allTeams = perGameResults.flatMap(r => r.teams)
+        const allMatches = perGameResults.flatMap(r => r.matches)
+        const rankingsMap = Object.fromEntries(
+          perGameResults.map(r => [r.gameId, r.ranking])
+        )
 
-    setTeams((prev) => [...prev, newTeam]);
-  };
+        setTeams(allTeams)
+        setMatches(allMatches)
+        setRankingsByGame(rankingsMap)
+      }
 
-  const updateTeam = (teamId, updates) => {
-    setTeams((prev) =>
-      prev.map((team) => (team.id === teamId ? { ...team, ...updates } : team))
-    );
-  };
+      // Inscripciones del usuario actual si está logueado
+      if (getUserFromStorage()?.id) {
+        const regRes = await api.get(`/registrations?userId=${getUserFromStorage().id}`)
+        setRegistrations(regRes.data.registrations ?? [])
+      }
 
-  const deleteTeam = (teamId) => {
-    setTeams((prev) => prev.filter((team) => team.id !== teamId));
-    setMatches((prev) =>
-      prev.map((match) => ({
-        ...match,
-        teamResults: match.teamResults.filter((result) => result.teamId !== teamId),
-        playerResults: match.playerResults?.filter((result) => result.teamId !== teamId) ?? [],
-      }))
-    );
-  };
-
-  const assignPlayerToTeam = (teamId, playerId) => {
-    const targetTeam = teams.find((team) => team.id === teamId);
-    const isRegistered = registrations.some(
-      (registration) => registration.userId === playerId && registration.gameId === targetTeam?.gameId
-    );
-    const isBusy = teams.some(
-      (team) => team.id !== teamId && team.gameId === targetTeam?.gameId && team.status === "Activo" && team.playerIds.includes(playerId)
-    );
-    if (!targetTeam || !isRegistered || isBusy) return false;
-
-    setTeams((prev) =>
-      prev.map((team) =>
-        team.id === teamId
-          ? { ...team, playerIds: [...new Set([...team.playerIds, playerId])] }
-          : team
-      )
-    );
-    return true;
-  };
-
-  const removePlayerFromTeam = (teamId, playerId) => {
-    setTeams((prev) =>
-      prev.map((team) =>
-        team.id === teamId
-          ? { ...team, playerIds: team.playerIds.filter((id) => id !== playerId) }
-          : team
-      )
-    );
-  };
-
-  const createMatch = ({ gameId, stage, phaseType, map, teamIds, scheduledAt, duration = 0 }) => {
-    const gameConfig = gameConfigs.find((game) => game.id === gameId);
-    if (!gameConfig) return;
-
-    const matchId = createId("match");
-    setTeams((prev) => prev.map((team) => (teamIds.includes(team.id) ? { ...team, matchId } : team)));
-    setMatches((prev) => [
-      {
-        id: matchId,
-        gameId,
-        phaseType,
-        stage,
-        map,
-        status: "Pendiente",
-        duration,
-        scheduledAt,
-        playerIds: teams.filter((team) => teamIds.includes(team.id)).flatMap((team) => team.playerIds),
-        teamResults: teamIds.map((teamId) => ({
-          teamId,
-          playerIds: teams.find((team) => team.id === teamId)?.playerIds ?? [],
-          stats: createEmptyStats(gameConfig),
-        })),
-        playerResults: [],
-      },
-      ...prev,
-    ]);
-  };
-
-  const updateMatchStatus = (matchId, status) => {
-    setMatches((prev) => prev.map((match) => (match.id === matchId ? { ...match, status } : match)));
-    if (["Finalizada", "Cancelada"].includes(status)) {
-      const match = matches.find((item) => item.id === matchId);
-      const teamIds = match?.teamResults.map((result) => result.teamId) ?? [];
-      setTeams((prev) => prev.map((team) => (teamIds.includes(team.id) ? { ...team, status: "Cerrado" } : team)));
+    } catch (err) {
+      console.error("[AppContext] Error cargando datos:", err)
+    } finally {
+      setLoading(false)
     }
-  };
+  }, [])
 
-  const updateMatchResult = (matchId, playerId, stats, points = 0, won = false) => {
-    const matchToClose = matches.find((match) => match.id === matchId);
-    const teamIdsToClose = matchToClose?.teamResults.map((result) => result.teamId) ?? [];
-    setTeams((prev) => prev.map((team) => (teamIdsToClose.includes(team.id) ? { ...team, status: "Cerrado" } : team)));
-    setMatches((prev) =>
-      prev.map((match) => {
-        if (match.id !== matchId) return match;
-        const teamId = match.teamResults.find((result) => result.playerIds.includes(playerId))?.teamId;
-        const playerResult = { playerId, teamId, stats, points: Number(points), won };
-        const existing = match.playerResults ?? [];
-        const nextPlayerResults = existing.some((result) => result.playerId === playerId)
-          ? existing.map((result) => (result.playerId === playerId ? playerResult : result))
-          : [...existing, playerResult];
-
-        return { ...match, status: "Finalizada", playerResults: nextPlayerResults };
-      })
-    );
-  };
-
-  const updateLiveRound = (matchId, playerId, metricKey, delta = 1) => {
-    setMatches((prev) =>
-      prev.map((match) => {
-        if (match.id !== matchId) return match;
-        const teamId = match.teamResults.find((result) => result.playerIds.includes(playerId))?.teamId;
-        const existing = match.playerResults?.find((result) => result.playerId === playerId);
-        const stats = {
-          ...(existing?.stats ?? {}),
-          [metricKey]: Math.max(0, Number(existing?.stats?.[metricKey] ?? 0) + delta),
-        };
-        const playerResult = { playerId, teamId, stats, points: existing?.points ?? 0, won: existing?.won ?? false };
-        const nextPlayerResults = match.playerResults?.some((result) => result.playerId === playerId)
-          ? match.playerResults.map((result) => (result.playerId === playerId ? playerResult : result))
-          : [...(match.playerResults ?? []), playerResult];
-        return { ...match, status: "En curso", playerResults: nextPlayerResults };
-      })
-    );
-  };
-
-  const createGame = (game) => {
-    const id = game.id || createId("game");
-    const newGame = {
-      id,
-      legacyId: Date.now(),
-      shortName: game.shortName || game.name,
-      image: game.image,
-      accent: game.accent || "#06b6d4",
-      teamSize: game.teamSize || "4 jugadores",
-      duration: game.duration || "Configurable",
-      format: game.format || "Partida personalizada",
-      status: game.status || "Activo",
-      description: game.description || "Nuevo juego disponible en ISC Playground.",
-      pointFormula: game.pointFormula || "puntos manuales + métricas",
-      scoringRules: game.scoringRules?.length ? game.scoringRules : [{ key: "points", label: "Mayor puntuación", direction: "desc" }],
-      metrics: game.metrics?.length ? game.metrics : [{ key: "points", label: "Puntos", type: "number", defaultValue: 0 }],
-      maps: game.maps || [],
-      visualMetrics: game.visualMetrics?.length ? game.visualMetrics : ["points"],
-      winCondition: game.winCondition || "Gana el usuario con mejor puntuación individual.",
-      ...game,
-      id,
-    };
-    setGameConfigs((prev) => [newGame, ...prev]);
-  };
-
-  const registerToGame = (gameId, userId = currentUser?.id) => {
-    if (!userId || registrations.some((registration) => registration.userId === userId && registration.gameId === gameId)) return;
-
-    setRegistrations((prev) => [
-      ...prev,
-      {
-        id: createId("reg"),
-        userId,
-        gameId,
-        status: "inscrito",
-        registeredAt: new Date().toISOString().slice(0, 16).replace("T", " "),
-      },
-    ]);
-    setPlayers((prev) =>
-      prev.map((player) =>
-        player.id === userId ? { ...player, games: [...new Set([...(player.games ?? []), gameId])] } : player
-      )
-    );
-  };
-
-  const cancelRegistration = (gameId, userId = currentUser?.id) => {
-    const hasStarted = matches.some(
-      (match) => match.gameId === gameId && match.playerIds.includes(userId) && !["Pendiente", "Cancelada"].includes(match.status)
-    );
-    if (!userId || hasStarted) return false;
-
-    setRegistrations((prev) =>
-      prev.filter((registration) => !(registration.userId === userId && registration.gameId === gameId))
-    );
-    setPlayers((prev) =>
-      prev.map((player) =>
-        player.id === userId ? { ...player, games: (player.games ?? []).filter((id) => id !== gameId) } : player
-      )
-    );
-    return true;
-  };
-
-  const getRegistration = (gameId, userId = currentUser?.id) =>
-    registrations.find((registration) => registration.gameId === gameId && registration.userId === userId);
-
-  const getRegisteredPlayers = (gameId) =>
-    registrations
-      .filter((registration) => registration.gameId === gameId)
-      .map((registration) => ({
-        ...players.find((player) => player.id === registration.userId),
-        registrationStatus: registration.status,
-        registeredAt: registration.registeredAt,
-      }))
-      .filter((player) => player.id);
-
-  const updateGame = (gameId, updates) => {
-    setGameConfigs((prev) => prev.map((game) => (game.id === gameId ? { ...game, ...updates } : game)));
-  };
-
-  const deleteGame = (gameId) => {
-    setGameConfigs((prev) => prev.filter((game) => game.id !== gameId));
-    setMatches((prev) => prev.filter((match) => match.gameId !== gameId));
-    setTeams((prev) => prev.filter((team) => team.gameId !== gameId));
-  };
-
-  const toggleGameStatus = (gameId) => {
-    setGameConfigs((prev) =>
-      prev.map((game) =>
-        game.id === gameId ? { ...game, status: game.status === "Activo" ? "Desactivado" : "Activo" } : game
-      )
-    );
-  };
+  useEffect(() => {
+    loadAll()
+  }, [loadAll])
 
   // ─────────────────────────────
-  // ACTUALIZAR USUARIO ACTUAL
+  // RECARGAR RANKINGS
   // ─────────────────────────────
-  // Actualiza el estado y también el localStorage
+  // Se llama después de guardar resultados de partidas
+  const reloadRankings = async () => {
+    try {
+      const [globalRes, ...gameRankings] = await Promise.all([
+        api.get("/rankings/global"),
+        ...gameConfigs.map(game => api.get(`/rankings?gameId=${game.id}`))
+      ])
+      setGlobalLeaderboard(globalRes.data.ranking ?? [])
+      const rankingsMap = Object.fromEntries(
+        gameConfigs.map((game, i) => [game.id, gameRankings[i].data.ranking ?? []])
+      )
+      setRankingsByGame(rankingsMap)
+    } catch (err) {
+      console.error("[AppContext] Error recargando rankings:", err)
+    }
+  }
+
+  // ─────────────────────────────
+  // USUARIO
+  // ─────────────────────────────
   const updateCurrentUser = (updates) => {
-    setCurrentUser((prev) => {
+    setCurrentUser(prev => {
       const updated = { ...prev, ...updates }
       localStorage.setItem("isc_user", JSON.stringify(updated))
       return updated
     })
   }
 
-  // ─────────────────────────────
-  // LOGOUT
-  // ─────────────────────────────
-  // Limpia el estado y el localStorage
   const logout = () => {
     localStorage.removeItem("isc_user")
     localStorage.removeItem("isc_token")
     setCurrentUser(null)
+    setRegistrations([])
   }
 
+  // ─────────────────────────────
+  // JUEGOS
+  // ─────────────────────────────
+  const createGame = async (game) => {
+    try {
+      const res = await api.post("/games", game)
+      setGameConfigs(prev => [res.data.game, ...prev])
+    } catch (err) {
+      console.error("[createGame]", err.response?.data?.error ?? err.message)
+    }
+  }
+
+  const updateGame = async (gameId, updates) => {
+    try {
+      const res = await api.patch(`/games/${gameId}`, updates)
+      setGameConfigs(prev => prev.map(g => g.id === gameId ? res.data.game : g))
+    } catch (err) {
+      console.error("[updateGame]", err.response?.data?.error ?? err.message)
+    }
+  }
+
+  const deleteGame = async (gameId) => {
+    try {
+      await api.delete(`/games/${gameId}`)
+      setGameConfigs(prev => prev.filter(g => g.id !== gameId))
+      setMatches(prev => prev.filter(m => m.gameId !== gameId))
+      setTeams(prev => prev.filter(t => t.gameId !== gameId))
+    } catch (err) {
+      console.error("[deleteGame]", err.response?.data?.error ?? err.message)
+    }
+  }
+
+  const toggleGameStatus = async (gameId) => {
+    try {
+      const res = await api.patch(`/games/${gameId}/status`)
+      setGameConfigs(prev => prev.map(g => g.id === gameId ? res.data.game : g))
+    } catch (err) {
+      console.error("[toggleGameStatus]", err.response?.data?.error ?? err.message)
+    }
+  }
+
+  // ─────────────────────────────
+  // INSCRIPCIONES
+  // ─────────────────────────────
+  const registerToGame = async (gameId, userId = currentUser?.id) => {
+    if (!userId || !currentUser) return
+    try {
+      const res = await api.post("/registrations", { userId, gameId })
+      setRegistrations(prev => [...prev, res.data.registration])
+      // Actualizamos el array games del usuario en contexto
+      updateCurrentUser({
+        games: [...(currentUser.games ?? []), gameId]
+      })
+    } catch (err) {
+      console.error("[registerToGame]", err.response?.data?.error ?? err.message)
+    }
+  }
+
+  const cancelRegistration = async (gameId, userId = currentUser?.id) => {
+    if (!userId || !currentUser) return false
+    // Buscamos la inscripción real para obtener su id de BD
+    const reg = registrations.find(r => r.gameId === gameId && r.userId === userId)
+    if (!reg) return false
+    try {
+      await api.delete(`/registrations/${reg.id}`)
+      setRegistrations(prev => prev.filter(r => !(r.gameId === gameId && r.userId === userId)))
+      updateCurrentUser({
+        games: (currentUser.games ?? []).filter(id => id !== gameId)
+      })
+      return true
+    } catch (err) {
+      console.error("[cancelRegistration]", err.response?.data?.error ?? err.message)
+      return false
+    }
+  }
+
+  const getRegistration = (gameId, userId = currentUser?.id) =>
+    registrations.find(r => r.gameId === gameId && r.userId === userId)
+
+  const getRegisteredPlayers = (gameId) =>
+    registrations
+      .filter(r => r.gameId === gameId)
+      .map(r => {
+        const player = players.find(p => p.id === r.userId)
+        return player ? { ...player, registrationStatus: r.status, registeredAt: r.registeredAt } : null
+      })
+      .filter(Boolean)
+
+  // ─────────────────────────────
+  // EQUIPOS
+  // ─────────────────────────────
+  const createTeam = async ({ name, tag, gameId, playerIds = [], matchId = null }) => {
+    try {
+      const res = await api.post("/teams", { name, tag, gameId, playerIds, matchId })
+      setTeams(prev => [...prev, res.data.team])
+    } catch (err) {
+      console.error("[createTeam]", err.response?.data?.error ?? err.message)
+    }
+  }
+
+  const updateTeam = async (teamId, updates) => {
+    try {
+      const res = await api.patch(`/teams/${teamId}`, updates)
+      setTeams(prev => prev.map(t => t.id === teamId ? res.data.team : t))
+    } catch (err) {
+      console.error("[updateTeam]", err.response?.data?.error ?? err.message)
+    }
+  }
+
+  const deleteTeam = async (teamId) => {
+    try {
+      await api.delete(`/teams/${teamId}`)
+      setTeams(prev => prev.filter(t => t.id !== teamId))
+    } catch (err) {
+      console.error("[deleteTeam]", err.response?.data?.error ?? err.message)
+    }
+  }
+
+  const assignPlayerToTeam = async (teamId, playerId) => {
+    try {
+      const res = await api.post(`/teams/${teamId}/players`, { playerId })
+      setTeams(prev => prev.map(t => t.id === teamId ? res.data.team : t))
+      return true
+    } catch (err) {
+      console.error("[assignPlayerToTeam]", err.response?.data?.error ?? err.message)
+      return false
+    }
+  }
+
+  const removePlayerFromTeam = async (teamId, playerId) => {
+    try {
+      const res = await api.delete(`/teams/${teamId}/players/${playerId}`)
+      setTeams(prev => prev.map(t => t.id === teamId ? res.data.team : t))
+    } catch (err) {
+      console.error("[removePlayerFromTeam]", err.response?.data?.error ?? err.message)
+    }
+  }
+
+  // ─────────────────────────────
+  // PARTIDAS
+  // ─────────────────────────────
+  const createMatch = async ({ gameId, stage, phaseType, map, teamIds, scheduledAt, duration = 0 }) => {
+    try {
+      const res = await api.post("/matches", {
+        gameId, phaseType, stage, map, scheduledAt, duration, teamIds
+      })
+      setMatches(prev => [res.data.match, ...prev])
+      // Actualizamos el matchId en los equipos involucrados
+      setTeams(prev => prev.map(t =>
+        teamIds.includes(t.id) ? { ...t, matchId: res.data.match.id } : t
+      ))
+    } catch (err) {
+      console.error("[createMatch]", err.response?.data?.error ?? err.message)
+    }
+  }
+
+  const updateMatchStatus = async (matchId, status) => {
+    try {
+      const res = await api.patch(`/matches/${matchId}/status`, { status })
+      setMatches(prev => prev.map(m => m.id === matchId ? res.data.match : m))
+      // Si finaliza o cancela, los equipos pasan a Cerrado localmente también
+      if (status === "Finalizada" || status === "Cancelada") {
+        const match = matches.find(m => m.id === matchId)
+        const teamIds = match?.teamResults?.map(tr => tr.teamId) ?? []
+        setTeams(prev => prev.map(t =>
+          teamIds.includes(t.id) ? { ...t, status: "Cerrado" } : t
+        ))
+        await reloadRankings()
+      }
+    } catch (err) {
+      console.error("[updateMatchStatus]", err.response?.data?.error ?? err.message)
+    }
+  }
+
+  const updateMatchResult = async (matchId, playerId, stats, points = 0, won = false) => {
+    try {
+      const res = await api.post(`/matches/${matchId}/results`, {
+        playerId, stats, points, won,
+        // El teamId lo obtenemos del estado local
+        teamId: matches
+          .find(m => m.id === matchId)
+          ?.teamResults?.find(tr => tr.playerIds?.includes(playerId))
+          ?.teamId ?? ""
+      })
+      // Actualizamos el playerResult en el match local
+      setMatches(prev => prev.map(m => {
+        if (m.id !== matchId) return m
+        const existing = m.playerResults ?? []
+        const next = existing.some(r => r.playerId === playerId)
+          ? existing.map(r => r.playerId === playerId ? res.data.result : r)
+          : [...existing, res.data.result]
+        return { ...m, status: "Finalizada", playerResults: next }
+      }))
+      await reloadRankings()
+    } catch (err) {
+      console.error("[updateMatchResult]", err.response?.data?.error ?? err.message)
+    }
+  }
+
+  const updateLiveRound = async (matchId, playerId, metricKey, delta = 1) => {
+    try {
+      const res = await api.patch(`/matches/${matchId}/live`, {
+        playerId, metricKey, delta
+      })
+      setMatches(prev => prev.map(m => {
+        if (m.id !== matchId) return m
+        const existing = m.playerResults ?? []
+        const next = existing.some(r => r.playerId === playerId)
+          ? existing.map(r => r.playerId === playerId ? res.data.result : r)
+          : [...existing, res.data.result]
+        return { ...m, status: "En curso", playerResults: next }
+      }))
+    } catch (err) {
+      console.error("[updateLiveRound]", err.response?.data?.error ?? err.message)
+    }
+  }
+
+  // ─────────────────────────────
+  // VALOR DEL CONTEXTO
+  // ─────────────────────────────
   const value = {
+    // Estado
     currentUser,
     gameConfigs,
     tournamentPhases,
@@ -327,28 +367,36 @@ export function AppProvider({ children }) {
     matches,
     rankingsByGame,
     globalLeaderboard,
+    loading,
+    // Usuario
+    updateCurrentUser,
+    logout,
+    // Juegos
     createGame,
     updateGame,
     deleteGame,
     toggleGameStatus,
+    // Inscripciones
     registerToGame,
     cancelRegistration,
     getRegistration,
     getRegisteredPlayers,
+    // Equipos
     createTeam,
     updateTeam,
     deleteTeam,
     assignPlayerToTeam,
     removePlayerFromTeam,
+    // Partidas
     createMatch,
     updateMatchStatus,
     updateMatchResult,
     updateLiveRound,
-    updateCurrentUser,
-    logout,
-  };
+    // Utilidades
+    reloadRankings,
+  }
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }
 
-export const useApp = () => useContext(AppContext);
+export const useApp = () => useContext(AppContext)
