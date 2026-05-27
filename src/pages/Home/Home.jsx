@@ -1,114 +1,172 @@
-import { useNavigate } from "react-router-dom";
-import Navbar from "../../components/Navbar/Navbar";
-import StatsChart from "../../components/StatsChart/StatsChart";
-import logo from "../../assets/images/playground-logo.png";
-import { useApp } from "../../context/AppContext";
-import "./Home.css";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { CalendarClock, Gamepad2, Radio, Shield, Trophy, Users } from "lucide-react"
+import { useApp } from "../../context/AppContext"
+import { getMetricLabel } from "../../utils/rankingEngine"
+import "./Home.css"
 
-const activity = [
-  { tag: "Soul Knight", text: "Carlos derrotó a 3 bosses en una run perfecta", time: "hace 4 min", tone: "green" },
-  { tag: "Bomb Squad", text: "Nuevo récord de eliminaciones: 24 KOs", time: "hace 11 min", tone: "cyan" },
-  { tag: "CS 1.6", text: "Semifinal A iniciada en de_dust2", time: "en vivo", tone: "purple" },
-  { tag: "Ranking", text: "fergood subió al top 3 global", time: "hace 22 min", tone: "gold" },
-];
+export default function DashboardHome() {
+  const { gameConfigs, teams, players, matches, rankingsByGame, globalLeaderboard, loading } = useApp()
 
-const topPlayers = [
-  { name: "Omarx", game: "CS 1.6", points: 1240, trend: "+18%", rank: 1 },
-  { name: "lucia.gg", game: "Soul Knight", points: 1118, trend: "+12%", rank: 2 },
-  { name: "fergood", game: "Bomb Squad", points: 1094, trend: "+9%", rank: 3 },
-];
+  // Guard: sin datos aún
+  if (loading || !gameConfigs.length) {
+    return (
+      <div className="admin-page dashboard-home">
+        <p>Cargando datos del torneo...</p>
+      </div>
+    )
+  }
 
-const activeMatches = [
-  { game: "Counter Strike", stage: "Semifinal", status: "LIVE", score: "11 - 8" },
-  { game: "Bomb Squad", stage: "Clasificatoria", status: "15:30", score: "Lobby listo" },
-  { game: "Soul Knight", stage: "Casual", status: "Abierta", score: "3/4 players" },
-];
+  const liveMatches = matches.filter((match) => match.status === "En curso")
+  const nextMatches = matches.slice(0, 4)
+  const chartData = gameConfigs.map((game) => ({
+    name: game.shortName,
+    partidas: matches.filter((match) => match.gameId === game.id).length,
+    equipos: teams.filter((team) => team.gameId === game.id).length,
+  }))
 
-export default function Home() {
-  const navigate = useNavigate();
-  const { gameConfigs, rankingsByGame, registerToGame, getRegistration, getRegisteredPlayers } = useApp();
-  const playersData = gameConfigs.map((game) => ({ name: game.shortName, value: getRegisteredPlayers(game.id).length }));
-
-  const handleRegistration = (event, gameId) => {
-    event.stopPropagation();
-    if (!getRegistration(gameId)) registerToGame(gameId);
-  };
+  const topGame = gameConfigs[0]
+  const topRanking = rankingsByGame[topGame?.id]?.[0]
 
   return (
-    <div>
-      <Navbar />
-      <div className="container home-shell">
-        <section className="hero">
-          <div className="hero-left">
-            <span className="hero-kicker">ISC eSports OS · Campus arena</span>
-            <h1>ISC Playground</h1>
-            <p>Compite, registra partidas reales y escala rankings con una experiencia gamer premium.</p>
-            <div className="hero-actions">
-              <button className="btn-primary" onClick={() => navigate("/juegos")}>Entrar a la arena</button>
-              <button className="btn-secondary" onClick={() => navigate("/ranking")}>Ver ranking global</button>
-            </div>
-            <div className="hero-stats">
-              <div><strong>50</strong><span>jugadores activos</span></div>
-              <div><strong>3</strong><span>juegos oficiales</span></div>
-              <div><strong>120</strong><span>partidas registradas</span></div>
-            </div>
-          </div>
-          <div className="hero-right"><img src={logo} alt="logo" /></div>
-        </section>
-
-        <section className="live-strip">
-          {activeMatches.map((match) => <article key={`${match.game}-${match.stage}`}><span>{match.status}</span><strong>{match.game}</strong><p>{match.stage} · {match.score}</p></article>)}
-        </section>
-
-        <h2 className="title-gamer">JUEGOS DISPONIBLES</h2>
-        <div className="grid grid-3">
-          {gameConfigs.map((game) => {
-            const registration = getRegistration(game.id);
-            const rankingLeader = rankingsByGame[game.id]?.[0];
-            return (
-              <div key={game.id} className="game-card">
-                <div className="game-img"><img src={game.image} alt={game.name} /><div className="overlay" /></div>
-                <div className="game-info">
-                  <div className="game-card-heading">
-                    <h3>{game.name}</h3>
-                    <span>{getRegisteredPlayers(game.id).length} inscritos</span>
-                  </div>
-                  <p>{game.description}</p>
-                  <div className="game-mini-meta">
-                    <span>{game.status}</span>
-                    <span>{game.format}</span>
-                    <span>Top: @{rankingLeader?.player.username ?? "pendiente"}</span>
-                  </div>
-                  <div className="game-actions-row">
-                    <button className={registration ? "btn-secondary is-registered" : "btn-primary"} onClick={(event) => handleRegistration(event, game.id)}>{registration ? "✓ Inscrito" : "Inscribirse"}</button>
-                    <button className="btn-secondary" onClick={() => navigate("/ranking")}>Ver ranking</button>
-                    <button className="btn-secondary" onClick={() => navigate(`/juego/${game.legacyId}`)}>Detalles</button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+    <div className="admin-page dashboard-home">
+      <div className="page-head">
+        <div>
+          <span className="eyebrow">Centro de mando</span>
+          <h2>Gestión real del torneo</h2>
+          <p>
+            Administra juegos oficiales, partidas, equipos temporales y rankings individuales calculados con reglas independientes por juego.
+          </p>
         </div>
+        <div className="control-badge">
+          <Radio size={18} /> {liveMatches.length} partidas en vivo
+        </div>
+      </div>
 
-        <section className="command-center">
-          <div className="activity-panel premium-panel">
-            <div className="section-heading"><span>Actividad del sistema</span><h2>La arena se mueve ahora</h2></div>
-            <div className="activity-feed">
-              {activity.map((item) => <article className={`feed-item ${item.tone}`} key={item.text}><span>{item.tag}</span><p>{item.text}</p><small>{item.time}</small></article>)}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <Users />
+          <span>Jugadores</span>
+          <strong>{players.length}</strong>
+        </div>
+        <div className="stat-card">
+          <Shield />
+          <span>Equipos temporales</span>
+          <strong>{teams.length}</strong>
+        </div>
+        <div className="stat-card">
+          <Gamepad2 />
+          <span>Juegos oficiales</span>
+          <strong>{gameConfigs.length}</strong>
+        </div>
+        <div className="stat-card highlight">
+          <Trophy />
+          <span>Líder global</span>
+          <strong>
+            {globalLeaderboard[0]?.player?.username
+              ? `@${globalLeaderboard[0].player.username}`
+              : "Pendiente"}
+          </strong>
+        </div>
+      </div>
+
+      <div className="grid-2">
+        <section className="panel-card arena-card">
+          <div className="section-title">
+            <div>
+              <span className="eyebrow">Partidas por juego</span>
+              <h3>Actividad del evento</h3>
             </div>
           </div>
-
-          <div className="top-panel premium-panel">
-            <div className="section-heading"><span>Top jugadores</span><h2>Jugadores en tendencia</h2></div>
-            {topPlayers.map((player) => <article className="player-card" key={player.name}><b>#{player.rank}</b><div><strong>{player.name}</strong><span>{player.game}</span></div><p>{player.points} pts</p><em>{player.trend}</em></article>)}
+          <div className="chart-box">
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={chartData}>
+                <XAxis dataKey="name" stroke="#94a3b8" />
+                <YAxis stroke="#94a3b8" allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{
+                    background: "#020617",
+                    border: "1px solid rgba(148,163,184,.2)",
+                    borderRadius: 12,
+                  }}
+                />
+                <Bar dataKey="partidas" fill="#06b6d4" radius={[10, 10, 0, 0]} />
+                <Bar dataKey="equipos" fill="#8b5cf6" radius={[10, 10, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </section>
 
-        <section className="insights-grid">
-          <div className="premium-panel chart-container"><StatsChart data={playersData} title="Distribución de jugadores por juego" /></div>
-          <div className="premium-panel tournament-card"><span>Próximo torneo</span><h2>Neon Cup Weekend</h2><p>Bracket de Counter Strike + desafío cooperativo de Soul Knight. Inscripciones mock abiertas.</p><button className="btn-secondary">Ver calendario</button></div>
+        <section className="panel-card live-panel">
+          <div className="section-title">
+            <div>
+              <span className="eyebrow">Acceso rápido</span>
+              <h3>Operaciones admin</h3>
+            </div>
+          </div>
+          <div className="quick-actions">
+            <a className="primary-btn" href="/admin/partidas">Crear partida</a>
+            <a className="ghost-btn" href="/admin/equipos">Asignar equipos</a>
+            <a className="ghost-btn" href="/admin/ranking">Ver rankings</a>
+          </div>
+
+          {topGame && (
+            <div className="top-snapshot">
+              <CalendarClock />
+              <div>
+                <span>Regla activa destacada</span>
+                <strong>
+                  {topGame.name}: {getMetricLabel(topGame, topGame.scoringRules?.[0]?.key)}
+                </strong>
+                <small>
+                  Actual líder:{" "}
+                  {topRanking?.player?.username
+                    ? `@${topRanking.player.username}`
+                    : "sin datos"}
+                </small>
+              </div>
+            </div>
+          )}
         </section>
       </div>
+
+      <section className="panel-card">
+        <div className="section-title">
+          <div>
+            <span className="eyebrow">Timeline</span>
+            <h3>Partidas recientes y próximas</h3>
+          </div>
+        </div>
+        <div className="match-feed">
+          {nextMatches.length === 0 && <p>No hay partidas registradas aún.</p>}
+          {nextMatches.map((match) => {
+            const game = gameConfigs.find((item) => item.id === match.gameId)
+            return (
+              <article
+                className="feed-item"
+                key={match.id}
+                style={{ borderColor: `${game?.accent}55` }}
+              >
+                <img src={game?.image} alt={game?.name} />
+                <div>
+                  <strong>{game?.name}</strong>
+                  <span>{match.stage} · {match.map}</span>
+                </div>
+                <span
+                  className={`pill ${
+                    match.status === "En curso"
+                      ? "live"
+                      : match.status === "Finalizada"
+                      ? "done"
+                      : ""
+                  }`}
+                >
+                  {match.status}
+                </span>
+              </article>
+            )
+          })}
+        </div>
+      </section>
     </div>
-  );
+  )
 }

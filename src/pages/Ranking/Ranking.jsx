@@ -1,98 +1,127 @@
-import { useMemo, useState } from "react";
-import Navbar from "../../components/Navbar/Navbar";
-import { useApp } from "../../context/AppContext";
-import "./Ranking.css";
+import { useState } from "react"
+import { Medal, Trophy } from "lucide-react"
+import { useApp } from "../../../context/AppContext"
+import { getMetricLabel } from "../../../utils/rankingEngine"
+import "./Ranking.css"
 
-const SESSION_KEY = "isc_user";
+export default function Ranking() {
+  const { gameConfigs, rankingsByGame, globalLeaderboard, loading } = useApp()
 
-export default function RankingPage() {
-  const { gameConfigs, globalLeaderboard, rankingsByGame, currentUser } = useApp();
-  const [selectedGame, setSelectedGame] = useState("Global");
+  if (loading || !gameConfigs.length) {
+    return <div className="admin-page ranking-admin"><p>Cargando rankings...</p></div>
+  }
 
-  const sessionUser = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
-    } catch {
-      return null;
-    }
-  }, []);
+  return <RankingInner
+    gameConfigs={gameConfigs}
+    rankingsByGame={rankingsByGame}
+    globalLeaderboard={globalLeaderboard}
+  />
+}
 
-  const rankingBySelectedGame = useMemo(() => {
-    if (selectedGame === "Global") {
-      return globalLeaderboard.map((row, index) => ({
-        id: row.player.id,
-        posicion: index + 1,
-        nombre: row.player.name,
-        usuario: `@${row.player.username}`,
-        partidas: row.matchesPlayed,
-        victorias: row.wins,
-        puntaje: Math.round(row.score),
-      }));
-    }
-
-    return (rankingsByGame[selectedGame] ?? []).map((row) => ({
-      id: row.player.id,
-      posicion: row.rank,
-      nombre: row.player.name,
-      usuario: `@${row.player.username}`,
-      partidas: row.matchesPlayed,
-      victorias: row.wins,
-      puntaje: row.totalPoints || row.totals[gameConfigs.find((game) => game.id === selectedGame)?.scoringRules[0].key] || 0,
-    }));
-  }, [gameConfigs, globalLeaderboard, rankingsByGame, selectedGame]);
-
-  const currentPlayer = useMemo(() => {
-    const identifier = sessionUser?.identifier ?? currentUser.username;
-    return rankingBySelectedGame.find((row) => `${row.nombre} ${row.usuario}`.toLowerCase().includes(identifier.toLowerCase())) ?? rankingBySelectedGame[0];
-  }, [currentUser.username, rankingBySelectedGame, sessionUser]);
+function RankingInner({ gameConfigs, rankingsByGame, globalLeaderboard }) {
+  const [selectedGameId, setSelectedGameId] = useState(gameConfigs[0].id)
+  const selectedGame = gameConfigs.find((game) => game.id === selectedGameId)
+  const ranking = rankingsByGame[selectedGameId] ?? []
 
   return (
-    <div className="ranking-page">
-      <Navbar />
-      <main className="container ranking-container">
-        <section className="ranking-hero">
-          <p className="ranking-kicker">CLASIFICATORIA EN TIEMPO REAL</p>
-          <h1>Ranking oficial ISC Playground</h1>
+    <div className="admin-page ranking-admin">
+      <div className="page-head">
+        <div>
+          <span className="eyebrow">Ranking individual</span>
+          <h2>Ganadores por usuario, no por equipo</h2>
           <p>
-            Consulta la tabla global individual y las clasificaciones por juego calculadas por usuario. Los equipos son temporales y no compiten como entidades permanentes.
+            El ranking global y por juego usa puntos individuales, estadísticas del usuario e
+            historial de partidas. Los equipos solo organizan rondas.
           </p>
-        </section>
+        </div>
+      </div>
 
-        <section className="ranking-switches" aria-label="Filtros de ranking">
-          <button type="button" className={selectedGame === "Global" ? "active" : ""} onClick={() => setSelectedGame("Global")}>🌍 Global</button>
-          {gameConfigs.map((game) => (
-            <button key={game.id} type="button" className={selectedGame === game.id ? "active" : ""} onClick={() => setSelectedGame(game.id)}>🎮 {game.name}</button>
-          ))}
-        </section>
-
-        {currentPlayer && (
-          <section className="ranking-player-card">
-            <div><p className="ranking-player-card__label">Posición destacada</p><h3>#{currentPlayer.posicion}</h3></div>
-            <div><p className="ranking-player-card__label">Usuario</p><h4>{currentPlayer.usuario}</h4></div>
-            <div><p className="ranking-player-card__label">Puntaje / métrica</p><h4>{currentPlayer.puntaje} pts</h4></div>
-          </section>
+      <div className="podium-grid">
+        {globalLeaderboard.slice(0, 3).map((row, index) => (
+          <article className={`podium-card rank-${index + 1}`} key={row.player.id}>
+            <Medal />
+            <span>#{index + 1}</span>
+            <h3>@{row.player.username}</h3>
+            <strong>{Math.round(row.score ?? 0)} pts</strong>
+            <small>{row.matchesPlayed} partidas · {row.wins} victorias</small>
+          </article>
+        ))}
+        {globalLeaderboard.length === 0 && (
+          <p style={{ gridColumn: "1/-1" }}>No hay datos de ranking aún. Juega partidas para generar el ranking.</p>
         )}
+      </div>
 
-        <section className="ranking-table-wrap">
-          <table className="ranking-table">
-            <thead>
-              <tr><th>#</th><th>Jugador</th><th>Usuario</th><th>Partidas/Juegos</th><th>Victorias/Historial</th><th>Puntaje</th></tr>
-            </thead>
-            <tbody>
-              {rankingBySelectedGame.map((row) => (
-                <tr key={row.id} className={currentPlayer?.id === row.id ? "highlight-player" : ""}>
-                  <td>{row.posicion <= 3 ? ["🥇", "🥈", "🥉"][row.posicion - 1] : `#${row.posicion}`}</td>
-                  <td>{row.nombre}</td>
-                  <td>{row.usuario}</td>
-                  <td>{row.partidas}</td>
-                  <td>{row.victorias}</td>
-                  <td>{row.puntaje} pts</td>
-                </tr>
+      <div className="ranking-tabs">
+        {gameConfigs.map((game) => (
+          <button
+            key={game.id}
+            className={selectedGameId === game.id ? "active" : ""}
+            onClick={() => setSelectedGameId(game.id)}
+            style={{ "--accent": game.accent }}
+          >
+            {game.shortName}
+          </button>
+        ))}
+      </div>
+
+      <section className="panel-card ranking-board" style={{ "--accent": selectedGame?.accent }}>
+        <div className="section-title">
+          <div>
+            <span className="eyebrow">{selectedGame?.name}</span>
+            <h3>Tabla individual por reglas oficiales</h3>
+          </div>
+          <Trophy />
+        </div>
+
+        <div className="rule-strip">
+          <span>Puntos manuales primero</span>
+          {selectedGame?.scoringRules?.map((rule, index) => (
+            <span key={rule.key}>{index + 1}. {rule.label}</span>
+          ))}
+        </div>
+
+        <table className="modern-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Usuario</th>
+              <th>Puntos</th>
+              <th>Partidas</th>
+              <th>Victorias</th>
+              {selectedGame?.scoringRules?.map((rule) => (
+                <th key={rule.key}>{getMetricLabel(selectedGame, rule.key)}</th>
               ))}
-            </tbody>
-          </table>
-        </section>
-      </main>
+              <th>Historial</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ranking.length === 0 ? (
+              <tr>
+                <td colSpan={6 + (selectedGame?.scoringRules?.length ?? 0)} style={{ textAlign: "center", padding: "24px" }}>
+                  Sin datos — completa partidas para ver el ranking.
+                </td>
+              </tr>
+            ) : (
+              ranking.map((row) => (
+                <tr key={row.player.id}>
+                  <td><span className="rank-chip">#{row.rank}</span></td>
+                  <td>
+                    <strong>{row.player.name}</strong>
+                    <small>@{row.player.username}</small>
+                  </td>
+                  <td>{row.totalPoints}</td>
+                  <td>{row.matchesPlayed}</td>
+                  <td>{row.wins}</td>
+                  {selectedGame?.scoringRules?.map((rule) => (
+                    <td key={rule.key}>{row.totals?.[rule.key] ?? 0}</td>
+                  ))}
+                  <td>{row.history?.length ?? 0} registros</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </section>
     </div>
-  );
+  )
 }
