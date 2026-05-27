@@ -37,12 +37,14 @@ const getGameRanking = async (gameId) => {
     for (const result of match.playerResults) {
       const playerId = `u-${result.playerId}`
 
-      // Inicializamos el jugador si no existe en el mapa
-      if (!playerMap[playerId]) {
-        playerMap[playerId] = {
-          playerId,
-          username: result.player?.username || '',
-          name: result.player?.name || '',
+        if (!playerMap[playerId]) {
+          playerMap[playerId] = {
+          // ✅ player anidado — estructura que espera el frontend
+          player: {
+            id: playerId,
+            username: result.player?.username || '',
+            name: result.player?.name || ''
+          },
           matchesPlayed: 0,
           totalPoints: 0,
           wins: 0,
@@ -101,10 +103,15 @@ const getGameRanking = async (gameId) => {
     return a.username.localeCompare(b.username)
   })
 
-  // Agregamos el rank a cada jugador
-  return ranking.map((player, index) => ({
+    // Agregamos el rank a cada jugador
+    return ranking.map((entry, index) => ({
     rank: index + 1,
-    ...player
+    player: entry.player,        // ✅ anidado
+    matchesPlayed: entry.matchesPlayed,
+    totalPoints: entry.totalPoints,
+    wins: entry.wins,
+    totals: entry.totals,
+    history: entry.history
   }))
 }
 
@@ -128,15 +135,17 @@ const getGlobalRanking = async () => {
     for (const entry of gameRanking) {
       if (!playerMap[entry.playerId]) {
         playerMap[entry.playerId] = {
-          playerId: entry.playerId,
-          username: entry.username,
-          name: entry.name,
+          player: {
+            id: entry.playerId,
+            username: entry.player.username,
+            name: entry.player.name
+          },
           matchesPlayed: 0,
           wins: 0,
           totalPoints: 0,
-          kills: 0,      // de CS y BombSquad
-          damage: 0,     // de Soul Knight (totalDamage)
-          bossesDefeated: 0 // de Soul Knight
+          kills: 0,
+          damage: 0,
+          bossesDefeated: 0
         }
       }
 
@@ -180,9 +189,16 @@ const getGlobalRanking = async () => {
   })
 
   // Reasignamos ranks después del orden final
-  return ranking.map((player, index) => ({
-    ...player,
-    rank: index + 1
+  return ranking.map((entry, index) => ({
+    rank: index + 1,
+    player: entry.player,
+    score: entry.score,
+    matchesPlayed: entry.matchesPlayed,
+    wins: entry.wins,
+    totalPoints: entry.totalPoints,
+    kills: entry.kills,
+    damage: entry.damage,
+    bossesDefeated: entry.bossesDefeated
   }))
 }
 
