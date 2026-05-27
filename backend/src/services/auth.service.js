@@ -16,12 +16,12 @@ import * as authRepository from '../repositories/auth.repository.js'
 import { formatUser } from '../utils/helpers.js'
 import { securityLog } from '../middlewares/logger.middleware.js'
 
-
 // ─────────────────────────────
-// REGISTRO
+// REGISTRO PÚBLICO
 // ─────────────────────────────
-// El front manda: { nombres, apellidos, email, username, password, role, adminCode? }
-const register = async ({ nombres, apellidos, email, username, password}) => {
+// El front manda: { nombres, apellidos, email, username, password }
+// El rol es SIEMPRE "usuario" — no hay forma de cambiarlo desde aquí
+const register = async ({ nombres, apellidos, email, username, password }) => {
 
   // Verificamos que el email no esté ya registrado
   const existingEmail = await authRepository.findByEmail(email)
@@ -35,33 +35,52 @@ const register = async ({ nombres, apellidos, email, username, password}) => {
     throw new Error('El username ya está en uso')
   }
 
-
-
-  // Todo usuario registrado públicamente es "usuario"
-  // Sin excepciones, sin códigos, sin flags
-const userRole = 'usuario'
-
   // Encriptamos la contraseña antes de guardarla
-  // 10 salt rounds es el estándar recomendado
+  // 10 salt rounds es el estándar recomendado para bcrypt
   const hashedPassword = await bcrypt.hash(password, 10)
 
   // name es nombres + apellidos concatenados
-  // El front lo usa para mostrar el nombre completo
+  // El front lo usa para mostrar el nombre completo del jugador
   const name = `${nombres} ${apellidos}`
 
-  // Guardamos el usuario en la BD
   const user = await authRepository.create({
-    nombres,
-    apellidos,
-    name,
-    email,
-    username,
+    nombres, apellidos, name, email, username,
     password: hashedPassword,
-    role: userRole
+    role: 'usuario' // siempre usuario, sin excepciones
   })
 
-  // Devolvemos el usuario con el id formateado como "u-1"
-  // El front espera este formato según el reporte
+  // Devolvemos el usuario formateado — nunca la contraseña
+  return formatUser(user)
+}
+
+// ─────────────────────────────
+// REGISTRO DE ADMINISTRADOR
+// ─────────────────────────────
+// Solo accesible desde el endpoint protegido /register-admin
+// La verificación de que quien llama es admin ya la hizo verifyAdmin
+// Aquí solo validamos duplicados y creamos con rol "admin"
+const registerAdmin = async ({ nombres, apellidos, email, username, password }) => {
+
+  // Verificamos duplicados igual que en el registro normal
+  const existingEmail = await authRepository.findByEmail(email)
+  if (existingEmail) {
+    throw new Error('El email ya está registrado')
+  }
+
+  const existingUsername = await authRepository.findByUsername(username)
+  if (existingUsername) {
+    throw new Error('El username ya está en uso')
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10)
+  const name = `${nombres} ${apellidos}`
+
+  const user = await authRepository.create({
+    nombres, apellidos, name, email, username,
+    password: hashedPassword,
+    role: 'admin' // rol explícito — solo llega aquí si verifyAdmin pasó
+  })
+
   return formatUser(user)
 }
 
@@ -73,14 +92,13 @@ const userRole = 'usuario'
 const login = async ({ identifier, password }) => {
 
   // Buscamos el usuario por email o username
-  // El reporte dice que identifier puede ser cualquiera de los dos
   const user = await authRepository.findByEmailOrUsername(identifier)
   if (!user) {
     // Mensaje genérico intencionalmente para no revelar si el email/username existe
     throw new Error('Credenciales incorrectas')
   }
 
-  // Verificamos que el usuario esté activo
+  // Verificamos que la cuenta esté activa
   if (user.status === 'Inactivo') {
     throw new Error('Tu cuenta está inactiva')
   }
@@ -91,7 +109,8 @@ const login = async ({ identifier, password }) => {
     throw new Error('Credenciales incorrectas')
   }
 
-  // Generamos el token JWT con los datos del usuario
+  // Generamos el token JWT con los datos mínimos necesarios
+  // id como número para que extractNumericId funcione correctamente
   const token = jwt.sign(
     { id: user.id, email: user.email, role: user.role, username: user.username },
     process.env.JWT_SECRET,
@@ -101,4 +120,4 @@ const login = async ({ identifier, password }) => {
   return { token, user: formatUser(user) }
 }
 
-export { register, login }
+export { register, registerAdmin, login }
