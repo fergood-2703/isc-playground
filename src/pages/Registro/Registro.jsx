@@ -1,37 +1,29 @@
-import api from "../../api/axios.js";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  ShieldCheck,
-  UserRound,
-  User,
-  Mail,
-  AtSign,
-  Lock,
-  Eye,
-  EyeOff,
-  AlertCircle,
-  CheckCircle2,
-  Home,
-  Loader2,
-} from "lucide-react";
-import logo from "../../assets/images/playground-logo.png";
-import "./Registro.css";
+// =============================
+// PÁGINA DE REGISTRO
+// =============================
 
-const ROLES = {
-  normal: "usuario",
-  admin: "admin",
-};
+// Solo registro público de usuarios normales.
+// Los admins se crean desde /admin/crear-admin por un admin autenticado.
+// Esta página no tiene rol de admin ni adminCode.
+
+import api from "../../api/axios.js"
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
+import {
+  UserRound, User, Mail, AtSign, Lock,
+  Eye, EyeOff, AlertCircle, CheckCircle2, Home, Loader2,
+} from "lucide-react"
+import logo from "../../assets/images/playground-logo.png"
+import "./Registro.css"
 
 export default function Registro() {
-  const navigate = useNavigate();
-  const [roleType, setRoleType] = useState("normal");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [apiError, setApiError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const navigate = useNavigate()
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [errors, setErrors] = useState({})
+  const [apiError, setApiError] = useState("")
+  const [successMessage, setSuccessMessage] = useState("")
 
   const [form, setForm] = useState({
     nombres: "",
@@ -40,88 +32,71 @@ export default function Registro() {
     username: "",
     password: "",
     confirmPassword: "",
-    adminCode: "",
-  });
+  })
 
+  // ─────────────────────────────
+  // MANEJO DE INPUTS
+  // ─────────────────────────────
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-
-    if (apiError) {
-      setApiError("");
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!form.nombres.trim()) newErrors.nombres = "Los nombres son requeridos";
-    if (!form.apellidos.trim()) newErrors.apellidos = "Los apellidos son requeridos";
-    if (!form.email.trim()) {
-      newErrors.email = "Ingresa tu correo";
-    } else if (!/^\S+@\S+\.\S+$/.test(form.email)) {
-      newErrors.email = "Correo inválido";
-    }
-
-    if (!form.username.trim()) {
-      newErrors.username = "Ingresa un username";
-    }
-
-    if (!form.password) {
-      newErrors.password = "La contraseña es requerida";
-    } else if (form.password.length < 4) {
-      newErrors.password = "Mínimo 4 caracteres";
-    }
-
-    if (!form.confirmPassword) {
-      newErrors.confirmPassword = "Confirma tu contraseña";
-    } else if (form.password !== form.confirmPassword) {
-      newErrors.confirmPassword = "Las contraseñas no coinciden";
-    }
-
-    if (roleType === "admin" && !form.adminCode.trim()) {
-      newErrors.adminCode = "El código admin es obligatorio";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!validateForm()) return;
-
-  setIsLoading(true);
-  setApiError("");
-
-  try {
-    // Llamada real al backend
-    const response = await api.post("/auth/register", {
-      nombres: form.nombres.trim(),
-      apellidos: form.apellidos.trim(),
-      email: form.email.trim(),
-      username: form.username.trim(),
-      password: form.password,
-    });
-
-    setSuccessMessage(
-      response.data.user.role === "admin"
-        ? "Administrador registrado correctamente"
-        : "Usuario registrado correctamente"
-    );
-
-    setTimeout(() => navigate("/login"), 1200);
-  } catch (err) {
-    // Mostramos el error que devuelve el backend
-    setApiError(err.response?.data?.error || "Error al registrarse")
-  } finally {
-    setIsLoading(false);
+    const { name, value } = e.target
+    setForm((prev) => ({ ...prev, [name]: value }))
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }))
+    if (apiError) setApiError("")
   }
-};
+
+  // ─────────────────────────────
+  // VALIDACIÓN
+  // ─────────────────────────────
+  const validateForm = () => {
+    const newErrors = {}
+    if (!form.nombres.trim()) newErrors.nombres = "Los nombres son requeridos"
+    if (!form.apellidos.trim()) newErrors.apellidos = "Los apellidos son requeridos"
+    if (!form.email.trim()) {
+      newErrors.email = "Ingresa tu correo"
+    } else if (!/^\S+@\S+\.\S+$/.test(form.email)) {
+      newErrors.email = "Correo inválido"
+    }
+    if (!form.username.trim()) newErrors.username = "Ingresa un username"
+    if (!form.password) {
+      newErrors.password = "La contraseña es requerida"
+    } else if (form.password.length < 6) {
+      newErrors.password = "Mínimo 6 caracteres"
+    }
+    if (!form.confirmPassword) {
+      newErrors.confirmPassword = "Confirma tu contraseña"
+    } else if (form.password !== form.confirmPassword) {
+      newErrors.confirmPassword = "Las contraseñas no coinciden"
+    }
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  // ─────────────────────────────
+  // ENVÍO DEL FORMULARIO
+  // ─────────────────────────────
+  // Siempre crea un usuario con rol "usuario"
+  // No hay forma de registrarse como admin desde aquí
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!validateForm()) return
+    setIsLoading(true)
+    setApiError("")
+    try {
+      await api.post("/auth/register", {
+        nombres: form.nombres.trim(),
+        apellidos: form.apellidos.trim(),
+        email: form.email.trim(),
+        username: form.username.trim(),
+        password: form.password,
+      })
+      setSuccessMessage("¡Cuenta creada exitosamente! Redirigiendo...")
+      setTimeout(() => navigate("/login"), 1200)
+    } catch (err) {
+      setApiError(err.response?.data?.error || "Error al registrarse")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <div className="registro-page">
@@ -130,50 +105,21 @@ const handleSubmit = async (e) => {
           <div className="logo-wrapper">
             <img src={logo} alt="ISC Playground Logo" />
           </div>
-
           <div className="registro-icon-wrap">
-            {roleType === "admin" ? <ShieldCheck size={22} /> : <UserRound size={22} />}
+            <UserRound size={22} />
           </div>
-
           <h1>Crear cuenta</h1>
           <p>Completa tus datos para registrarte</p>
         </header>
 
         <div className="registro-body">
-          <div className="role-switch" role="tablist" aria-label="Tipo de registro">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={roleType === "normal"}
-              className={roleType === "normal" ? "active" : ""}
-              onClick={() => {
-                setRoleType("normal");
-                setErrors((prev) => ({ ...prev, adminCode: "" }));
-              }}
-            >
-              Usuarios
-            </button>
-            <span className="role-divider" aria-hidden="true">
-              |
-            </span>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={roleType === "admin"}
-              className={roleType === "admin" ? "active" : ""}
-              onClick={() => setRoleType("admin")}
-            >
-              Administradores
-            </button>
-          </div>
-
+          {/* Mensajes de error/éxito */}
           {apiError && (
             <div className="registro-alert error">
               <AlertCircle size={16} />
               <span>{apiError}</span>
             </div>
           )}
-
           {successMessage && (
             <div className="registro-alert success">
               <CheckCircle2 size={16} />
@@ -182,6 +128,7 @@ const handleSubmit = async (e) => {
           )}
 
           <form onSubmit={handleSubmit} className="registro-form">
+            {/* Nombres y Apellidos */}
             <div className="input-grid two">
               <label className="field">
                 <span>Nombres *</span>
@@ -191,7 +138,6 @@ const handleSubmit = async (e) => {
                 </div>
                 {errors.nombres && <small className="error-msg">{errors.nombres}</small>}
               </label>
-
               <label className="field">
                 <span>Apellidos *</span>
                 <div className="input-wrap">
@@ -202,53 +148,27 @@ const handleSubmit = async (e) => {
               </label>
             </div>
 
+            {/* Email */}
             <label className="field">
               <span>Correo *</span>
               <div className="input-wrap">
                 <Mail size={15} />
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleInputChange}
-                  placeholder="correo@dominio.com"
-                />
+                <input type="email" name="email" value={form.email} onChange={handleInputChange} placeholder="correo@dominio.com" />
               </div>
               {errors.email && <small className="error-msg">{errors.email}</small>}
             </label>
 
+            {/* Username */}
             <label className="field">
               <span>Username *</span>
               <div className="input-wrap">
                 <AtSign size={15} />
-                <input
-                  type="text"
-                  name="username"
-                  value={form.username}
-                  onChange={handleInputChange}
-                  placeholder="gamer123"
-                />
+                <input type="text" name="username" value={form.username} onChange={handleInputChange} placeholder="gamer123" />
               </div>
               {errors.username && <small className="error-msg">{errors.username}</small>}
             </label>
 
-            {roleType === "admin" && (
-              <label className="field">
-                <span>Código de autorización admin *</span>
-                <div className="input-wrap">
-                  <ShieldCheck size={15} />
-                  <input
-                    type="text"
-                    name="adminCode"
-                    value={form.adminCode}
-                    onChange={handleInputChange}
-                    placeholder="Código interno LAN"
-                  />
-                </div>
-                {errors.adminCode && <small className="error-msg">{errors.adminCode}</small>}
-              </label>
-            )}
-
+            {/* Contraseñas */}
             <div className="input-grid two">
               <label className="field">
                 <span>Contraseña *</span>
@@ -260,19 +180,14 @@ const handleSubmit = async (e) => {
                     value={form.password}
                     onChange={handleInputChange}
                   />
-                  <button
-                    type="button"
-                    className="eye-btn"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                  >
+                  <button type="button" className="eye-btn" onClick={() => setShowPassword((p) => !p)}>
                     {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </div>
                 {errors.password && <small className="error-msg">{errors.password}</small>}
               </label>
-
               <label className="field">
-                <span>Confirmar contraseña *</span>
+                <span>Confirmar *</span>
                 <div className="input-wrap">
                   <Lock size={15} />
                   <input
@@ -281,33 +196,23 @@ const handleSubmit = async (e) => {
                     value={form.confirmPassword}
                     onChange={handleInputChange}
                   />
-                  <button
-                    type="button"
-                    className="eye-btn"
-                    onClick={() => setShowConfirmPassword((prev) => !prev)}
-                  >
+                  <button type="button" className="eye-btn" onClick={() => setShowConfirmPassword((p) => !p)}>
                     {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </div>
-                {errors.confirmPassword && (
-                  <small className="error-msg">{errors.confirmPassword}</small>
-                )}
+                {errors.confirmPassword && <small className="error-msg">{errors.confirmPassword}</small>}
               </label>
             </div>
 
             <button type="submit" className="submit-btn" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 size={16} className="spin" /> Registrando...
-                </>
-              ) : (
-                <>{roleType === "admin" ? "Crear admin" : "Crear usuario"}</>
-              )}
+              {isLoading
+                ? <><Loader2 size={16} className="spin" /> Registrando...</>
+                : "Crear cuenta"}
             </button>
 
             <div className="registro-links">
               <button type="button" className="link-btn" onClick={() => navigate("/login")}>
-                Ir a login
+                Ya tengo cuenta
               </button>
               <button type="button" className="link-btn ghost" onClick={() => navigate("/")}>
                 <Home size={13} /> Volver al inicio
@@ -317,5 +222,5 @@ const handleSubmit = async (e) => {
         </div>
       </div>
     </div>
-  );
+  )
 }
