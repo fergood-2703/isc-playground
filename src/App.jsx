@@ -1,9 +1,14 @@
+// =============================
+// RUTAS DE LA APLICACIÓN
+// =============================
+
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 
 import Home from "./pages/Home/Home"
 import Login from "./pages/Login/Login"
 import Registro from "./pages/Registro/Registro"
 import Detalles from "./pages/Juegos/Detalles/Detalles"
+import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute"
 
 import DashboardLayout from "./pages/Dashboard/DashboardLayout"
 import DashboardHome from "./pages/Dashboard/views/DashboardHome"
@@ -18,16 +23,26 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Públicas */}
+        {/* ─────────────────────────────── */}
+        {/* RUTAS PÚBLICAS                  */}
+        {/* ─────────────────────────────── */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
-
-        {/* Detalle de juego */}
         <Route path="/juego/:id" element={<Detalles />} />
 
-        {/* Dashboard admin */}
-        <Route path="/admin" element={<DashboardLayout />}>
+        {/* ─────────────────────────────── */}
+        {/* RUTAS PROTEGIDAS — SOLO ADMIN   */}
+        {/* Sin token o sin rol admin → /   */}
+        {/* ─────────────────────────────── */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute requireAdmin>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<DashboardHome />} />
           <Route path="juegos" element={<Juegos />} />
           <Route path="partidas" element={<Partidas />} />
