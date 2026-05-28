@@ -1,63 +1,69 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import "./Login.css";
-import { Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
-import logo from "../../assets/images/playground-logo.png";
-import api from "../../api/axios.js";
-import { useApp } from "../../context/AppContext.jsx";
+// =============================
+// PÁGINA DE LOGIN
+// =============================
+
+// Si el usuario ya tiene sesión activa, redirige automáticamente.
+// Admin → /admin, Usuario → /
+
+import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
+import "./Login.css"
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react"
+import logo from "../../assets/images/playground-logo.png"
+import api from "../../api/axios.js"
+import { useApp } from "../../context/AppContext.jsx"
 
 export default function Login() {
-  const navigate = useNavigate();
-  const [activeInput, setActiveInput] = useState(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const { updateCurrentUser } = useApp()
+  const navigate = useNavigate()
+  const { currentUser, updateCurrentUser } = useApp()
+  const [activeInput, setActiveInput] = useState(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
 
-  const [formData, setFormData] = useState({
-    identifier: "",
-    password: "",
-  });
+  const [formData, setFormData] = useState({ identifier: "", password: "" })
+
+  // ─────────────────────────────
+  // REDIRECCIÓN SI YA ESTÁ LOGUEADO
+  // ─────────────────────────────
+  // Si el usuario ya tiene sesión, no necesita ver el login
+  useEffect(() => {
+    if (currentUser) {
+      navigate(currentUser.role === "admin" ? "/admin" : "/", { replace: true })
+    }
+  }, [currentUser, navigate])
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    if (error) setError("");
-  };
+    setFormData({ ...formData, [e.target.name]: e.target.value })
+    if (error) setError("")
+  }
 
+  // ─────────────────────────────
+  // ENVÍO DEL FORMULARIO
+  // ─────────────────────────────
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
-
+    e.preventDefault()
+    setIsLoading(true)
+    setError("")
     try {
-      // Llamada real al backend
       const response = await api.post("/auth/login", {
         identifier: formData.identifier,
         password: formData.password,
-      });
+      })
+      const { token, user } = response.data
 
-      const { token, user } = response.data;
+      // Guardamos token y usuario en localStorage
+      localStorage.setItem("isc_token", token)
+      localStorage.setItem("isc_user", JSON.stringify(user))
 
-      // Guardamos el token y el usuario en localStorage
-      localStorage.setItem("isc_token", token);
-      localStorage.setItem("isc_user", JSON.stringify(user));
-
-      // Actualizamos el contexto directamente
+      // Actualizamos el contexto — el useEffect de arriba hará la redirección
       updateCurrentUser(user)
-
-      // Redirigimos según el rol
-      if (user.role === "admin") {
-        navigate("/admin");
-      } else {
-        navigate("/");
-      }
     } catch (err) {
-      // Mostramos el error que devuelve el backend
-      setError(err.response?.data?.error || "Error al iniciar sesión");
+      setError(err.response?.data?.error || "Error al iniciar sesión")
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
     <div className="login-page">
@@ -71,8 +77,6 @@ export default function Login() {
         </div>
 
         <form className="login-body" onSubmit={handleSubmit}>
-
-          {/* ERROR */}
           {error && (
             <div className="login-error">
               <AlertCircle size={16} />
@@ -80,7 +84,6 @@ export default function Login() {
             </div>
           )}
 
-          {/* IDENTIFIER */}
           <div className="input-group">
             <label>Correo o usuario</label>
             <div className="input-box">
@@ -97,7 +100,6 @@ export default function Login() {
             </div>
           </div>
 
-          {/* PASSWORD */}
           <div className="input-group">
             <label>Contraseña</label>
             <div className="input-box">
@@ -117,12 +119,10 @@ export default function Login() {
             </div>
           </div>
 
-          {/* BUTTON */}
           <button type="submit" className="login-btn" disabled={isLoading}>
             {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
           </button>
 
-          {/* LINKS */}
           <div className="login-links">
             <button type="button" className="link-btn" onClick={() => navigate("/registro")}>
               Crear cuenta
@@ -131,9 +131,8 @@ export default function Login() {
               ← Volver al inicio
             </button>
           </div>
-
         </form>
       </div>
     </div>
-  );
+  )
 }
