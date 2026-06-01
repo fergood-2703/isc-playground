@@ -1,18 +1,41 @@
-import { useNavigate } from "react-router-dom"
-import Navbar from "../../components/Navbar/Navbar"
-import { useApp } from "../../context/AppContext"
-import "./Juegos.css"
+import { useNavigate } from "react-router-dom";
+import Navbar from "../../components/Navbar/Navbar";
+import { useApp } from "../../context/AppContext";
+import "./Juegos.css";
 
 export default function JuegosPage() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const {
+    // Usuario actual. Sirve para saber si puede inscribirse.
+    currentUser,
+
+    // Datos principales cargados desde backend.
     gameConfigs,
     rankingsByGame,
+
+    // Funciones para inscripciones y conteo de jugadores.
     registerToGame,
     getRegistration,
     getRegisteredPlayers,
-  } = useApp()
+  } = useApp();
+
+  // =====================================================
+  // MANEJAR INSCRIPCIÓN DESDE /juegos
+  // =====================================================
+  // Sin sesión → mandamos a /login.
+  // Ya inscrito → evitamos duplicar POST.
+  // No inscrito → llamamos a registerToGame(), que usa POST /api/registrations.
+  const handleRegistration = (gameId) => {
+    if (!currentUser) {
+      navigate("/login");
+      return;
+    }
+
+    if (!getRegistration(gameId)) {
+      registerToGame(gameId);
+    }
+  };
 
   return (
     <div className="juegos-page">
@@ -35,14 +58,11 @@ export default function JuegosPage() {
 
           <div className="grid grid-3">
             {gameConfigs.map((game) => {
-              const registration = getRegistration(game.id)
-              const rankingLeader = rankingsByGame[game.id]?.[0]
+              const registration = getRegistration(game.id);
+              const rankingLeader = rankingsByGame[game.id]?.[0];
 
               return (
-                <article
-                  key={game.id}
-                  className="game-card game-card--juegos"
-                >
+                <article key={game.id} className="game-card game-card--juegos">
                   <div className="game-img">
                     <img src={game.image} alt={game.name} />
                     <div className="overlay" />
@@ -72,7 +92,8 @@ export default function JuegosPage() {
 
                     <div className="game-mini-meta">
                       <span>
-                        Ranking: @{rankingLeader?.player?.username ?? "pendiente"}
+                        Ranking: @
+                        {rankingLeader?.player?.username ?? "pendiente"}
                       </span>
                       <span>{registration?.status ?? "abierto"}</span>
                     </div>
@@ -84,9 +105,13 @@ export default function JuegosPage() {
                             ? "btn-secondary is-registered"
                             : "btn-primary"
                         }
-                        onClick={() => registerToGame(game.id)}
+                        onClick={() => handleRegistration(game.id)}
                       >
-                        {registration ? "✓ Inscrito" : "Inscribirse"}
+                        {!currentUser
+                          ? "Iniciar sesión"
+                          : registration
+                            ? "✓ Inscrito"
+                            : "Inscribirse"}
                       </button>
 
                       <button
@@ -105,11 +130,11 @@ export default function JuegosPage() {
                     </div>
                   </div>
                 </article>
-              )
+              );
             })}
           </div>
         </section>
       </main>
     </div>
-  )
+  );
 }

@@ -1,9 +1,9 @@
-import { useNavigate } from "react-router-dom"
-import Navbar from "../../components/Navbar/Navbar"
-import StatsChart from "../../components/StatsChart/StatsChart"
-import logo from "../../assets/images/playground-logo.png"
-import { useApp } from "../../context/AppContext"
-import "./Home.css"
+import { useNavigate } from "react-router-dom";
+import Navbar from "../../components/Navbar/Navbar";
+import StatsChart from "../../components/StatsChart/StatsChart";
+import logo from "../../assets/images/playground-logo.png";
+import { useApp } from "../../context/AppContext";
+import "./Home.css";
 
 const activity = [
   {
@@ -30,43 +30,81 @@ const activity = [
     time: "hace 22 min",
     tone: "gold",
   },
-]
+];
 
 const topPlayers = [
   { name: "Omarx", game: "CS 1.6", points: 1240, trend: "+18%", rank: 1 },
-  { name: "lucia.gg", game: "Soul Knight", points: 1118, trend: "+12%", rank: 2 },
+  {
+    name: "lucia.gg",
+    game: "Soul Knight",
+    points: 1118,
+    trend: "+12%",
+    rank: 2,
+  },
   { name: "fergood", game: "Bomb Squad", points: 1094, trend: "+9%", rank: 3 },
-]
+];
 
 const activeMatches = [
-  { game: "Counter Strike", stage: "Semifinal", status: "LIVE", score: "11 - 8" },
-  { game: "Bomb Squad", stage: "Clasificatoria", status: "15:30", score: "Lobby listo" },
-  { game: "Soul Knight", stage: "Casual", status: "Abierta", score: "3/4 players" },
-]
+  {
+    game: "Counter Strike",
+    stage: "Semifinal",
+    status: "LIVE",
+    score: "11 - 8",
+  },
+  {
+    game: "Bomb Squad",
+    stage: "Clasificatoria",
+    status: "15:30",
+    score: "Lobby listo",
+  },
+  {
+    game: "Soul Knight",
+    stage: "Casual",
+    status: "Abierta",
+    score: "3/4 players",
+  },
+];
 
 export default function Home() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const {
+    // Usuario actual. Sirve para saber si está logueado.
+    currentUser,
+
+    // Datos cargados desde backend.
     gameConfigs,
     rankingsByGame,
+
+    // Funciones del contexto.
     registerToGame,
     getRegistration,
     getRegisteredPlayers,
-  } = useApp()
+  } = useApp();
 
   const playersData = gameConfigs.map((game) => ({
     name: game.shortName,
     value: getRegisteredPlayers(game.id).length,
-  }))
+  }));
 
+  // =====================================================
+  // MANEJAR INSCRIPCIÓN DESDE HOME
+  // =====================================================
+  // Si no hay sesión, mandamos al usuario a /login.
+  // Si ya está inscrito, no hacemos otro POST.
+  // Si no está inscrito, llamamos al backend con registerToGame().
   const handleRegistration = (event, gameId) => {
-    event.stopPropagation()
+    event.stopPropagation();
+
+    if (!currentUser) {
+      navigate("/login");
+      return;
+    }
 
     if (!getRegistration(gameId)) {
-      registerToGame(gameId)
+      registerToGame(gameId);
     }
-  }
+  };
 
   return (
     <div>
@@ -75,9 +113,7 @@ export default function Home() {
       <div className="container home-shell">
         <section className="hero">
           <div className="hero-left">
-            <span className="hero-kicker">
-              ISC eSports OS · Campus arena
-            </span>
+            <span className="hero-kicker">ISC eSports OS · Campus arena</span>
 
             <h1>ISC Playground</h1>
 
@@ -141,8 +177,8 @@ export default function Home() {
 
         <div className="grid grid-3">
           {gameConfigs.map((game) => {
-            const registration = getRegistration(game.id)
-            const rankingLeader = rankingsByGame[game.id]?.[0]
+            const registration = getRegistration(game.id);
+            const rankingLeader = rankingsByGame[game.id]?.[0];
 
             return (
               <div key={game.id} className="game-card">
@@ -170,6 +206,7 @@ export default function Home() {
                   </div>
 
                   <div className="game-actions-row">
+                    
                     <button
                       className={
                         registration
@@ -178,7 +215,11 @@ export default function Home() {
                       }
                       onClick={(event) => handleRegistration(event, game.id)}
                     >
-                      {registration ? "✓ Inscrito" : "Inscribirse"}
+                      {!currentUser
+                        ? "Iniciar sesión"
+                        : registration
+                          ? "✓ Inscrito"
+                          : "Inscribirse"}
                     </button>
 
                     <button
@@ -197,7 +238,7 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            )
+            );
           })}
         </div>
 
@@ -210,10 +251,7 @@ export default function Home() {
 
             <div className="activity-feed">
               {activity.map((item) => (
-                <article
-                  className={`feed-item ${item.tone}`}
-                  key={item.text}
-                >
+                <article className={`feed-item ${item.tone}`} key={item.text}>
                   <span>{item.tag}</span>
                   <p>{item.text}</p>
                   <small>{item.time}</small>
@@ -264,5 +302,5 @@ export default function Home() {
         </section>
       </div>
     </div>
-  )
+  );
 }
