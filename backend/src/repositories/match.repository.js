@@ -1,25 +1,41 @@
 // =============================
 // REPOSITORIO DE PARTIDAS
 // =============================
+//
+// Esta capa habla directamente con Prisma.
+// Aquí corregimos algo importante:
+//
+// Antes todos los playerResults se creaban con teamIds[0],
+// aunque algunos jugadores pertenecieran al equipo B.
+// Eso rompía los resultados individuales y el ranking.
+//
+// Ahora recibimos teamPlayerRows:
+// [
+//   { playerId: 12, teamId: "equipo-a" },
+//   { playerId: 13, teamId: "equipo-b" }
+// ]
+//
+// Así cada jugador queda asociado a su equipo real.
 
-// Es la única capa que habla directamente con la base de datos.
-// Maneja todas las consultas relacionadas con partidas y resultados.
+import prisma from "../config/db.js";
 
-import prisma from '../config/db.js'
-
-// Siempre incluimos teamResults y playerResults al consultar una partida
+// Relaciones que siempre queremos traer al consultar partidas.
 const includeRelations = {
   teamResults: {
     include: {
       team: {
         include: {
-          players: { select: { userId: true } }
-        }
-      }
-    }
+          players: {
+            select: {
+              userId: true,
+            },
+          },
+        },
+      },
+    },
   },
-  playerResults: true
-}
+  playerResults: true,
+};
 
 // ─────────────────────────────
 // OBTENER PARTIDAS
@@ -27,11 +43,14 @@ const includeRelations = {
 const findAll = async ({ gameId }) => {
   return await prisma.match.findMany({
     where: {
-      ...(gameId && { gameId })
+      ...(gameId && { gameId }),
     },
-    include: includeRelations
-  })
-}
+    include: includeRelations,
+    orderBy: {
+      scheduledAt: "desc",
+    },
+  });
+};
 
 // ─────────────────────────────
 // BUSCAR PARTIDA POR ID
@@ -39,45 +58,84 @@ const findAll = async ({ gameId }) => {
 const findById = async (id) => {
   return await prisma.match.findUnique({
     where: { id },
-    include: includeRelations
-  })
-}
+    include: includeRelations,
+  });
+};
 
 // ─────────────────────────────
 // CREAR PARTIDA
 // ─────────────────────────────
-const create = async ({ id, gameId, phaseType, stage, map, scheduledAt, duration, teamIds, playerIds }) => {
-  return await prisma.match.create({
-    data: {
-      id,
-      gameId,
-      phaseType,
-      stage,
-      map,
-      scheduledAt,
-      duration,
-      status: 'Pendiente',
-      // Creamos los teamResults vacíos para cada equipo
-      teamResults: {
-        create: teamIds.map(teamId => ({
-          teamId,
-          stats: {}
-        }))
+//
+// Crea:
+// - Match
+// - TeamResult por cada equipo
+// - PlayerResult por cada jugador de los equipos
+//
+// Además actualiza matchId en los equipos usados.
+const create = async ({
+  id,
+  gameId,
+  phaseType,
+  stage,
+  map,
+  scheduledAt,
+  duration,
+  teamIds,
+  teamPlayerRows,
+}) => {
+  return await prisma.$transaction(async (tx) => {
+    await tx.match.create({
+      data: {
+        id,
+        gameId,
+        phaseType,
+        stage,
+        map,
+        scheduledAt,
+        duration,
+        status: "Pendiente",
+
+        // Resultado base por equipo.
+        teamResults: {
+          create: teamIds.map((teamId) => ({
+            teamId,
+            stats: {},
+          })),
+        },
+
+        // Resultado base por jugador.
+        // Cada jugador queda ligado a su equipo real.
+        playerResults: {
+          create: teamPlayerRows.map((row) => ({
+            playerId: row.playerId,
+            teamId: row.teamId,
+            points: 0,
+            won: false,
+            stats: {},
+          })),
+        },
       },
-      // Creamos los playerResults vacíos para cada jugador
-      playerResults: {
-        create: playerIds.map(playerId => ({
-          playerId,
-          teamId: teamIds[0], // se actualiza cuando se guardan resultados reales
-          points: 0,
-          won: false,
-          stats: {}
-        }))
-      }
-    },
-    include: includeRelations
-  })
-}
+    });
+
+    // Marcamos los equipos como usados por esta partida.
+    await tx.team.updateMany({
+      where: {
+        id: {
+          in: teamIds,
+        },
+      },
+      data: {
+        matchId: id,
+      },
+    });
+
+    // Devolvemos la partida con relaciones completas.
+    return await tx.match.findUnique({
+      where: { id },
+      include: includeRelations,
+    });
+  });
+};
 
 // ─────────────────────────────
 // ACTUALIZAR STATUS
@@ -86,24 +144,41 @@ const updateStatus = async (id, status) => {
   return await prisma.match.update({
     where: { id },
     data: { status },
-    include: includeRelations
-  })
-}
+    include: includeRelations,
+  });
+};
 
 // ─────────────────────────────
-// AGREGAR RESULTADO DE JUGADOR
+// AGREGAR / ACTUALIZAR RESULTADO DE JUGADOR
 // ─────────────────────────────
+//
+// upsert:
+// - Si ya existe resultado de ese jugador en esa partida, lo actualiza.
+// - Si no existe, lo crea.
 const addResult = async ({ matchId, playerId, teamId, stats, points, won }) => {
-  // Usamos upsert para crear o actualizar el resultado
-  // Si ya existe un resultado para ese jugador en esa partida, lo actualiza
   return await prisma.playerResult.upsert({
     where: {
-      matchId_playerId: { matchId, playerId }
+      matchId_playerId: {
+        matchId,
+        playerId,
+      },
     },
-    update: { teamId, stats, points, won },
-    create: { matchId, playerId, teamId, stats, points, won }
-  })
-}
+    update: {
+      teamId,
+      stats,
+      points,
+      won,
+    },
+    create: {
+      matchId,
+      playerId,
+      teamId,
+      stats,
+      points,
+      won,
+    },
+  });
+};
 
 // ─────────────────────────────
 // BUSCAR RESULTADO DE JUGADOR
@@ -111,10 +186,13 @@ const addResult = async ({ matchId, playerId, teamId, stats, points, won }) => {
 const findPlayerResult = async (matchId, playerId) => {
   return await prisma.playerResult.findUnique({
     where: {
-      matchId_playerId: { matchId, playerId }
-    }
-  })
-}
+      matchId_playerId: {
+        matchId,
+        playerId,
+      },
+    },
+  });
+};
 
 // ─────────────────────────────
 // ACTUALIZAR RESULTADO
@@ -122,8 +200,16 @@ const findPlayerResult = async (matchId, playerId) => {
 const updateResult = async (id, data) => {
   return await prisma.playerResult.update({
     where: { id },
-    data
-  })
-}
+    data,
+  });
+};
 
-export { findAll, findById, create, updateStatus, addResult, findPlayerResult, updateResult }
+export {
+  findAll,
+  findById,
+  create,
+  updateStatus,
+  addResult,
+  findPlayerResult,
+  updateResult,
+};

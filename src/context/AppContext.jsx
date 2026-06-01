@@ -580,6 +580,14 @@ export function AppProvider({ children }) {
   // =====================================================
   // PARTIDAS
   // =====================================================
+  //
+  // Las partidas se crean desde equipos temporales.
+  // El flujo correcto es:
+  // 1. Crear equipos en Dashboard > Equipos.
+  // 2. Crear partida con 2 equipos activos.
+  // 3. Poner partida "En curso".
+  // 4. Registrar resultados.
+  // 5. Finalizar partida para que cuente en ranking.
 
   const createMatch = async ({
     gameId,
@@ -605,7 +613,7 @@ export function AppProvider({ children }) {
 
       setMatches((prev) => [createdMatch, ...prev]);
 
-      // Marcamos localmente qué equipos quedaron asociados a la partida.
+      // Marcamos localmente los equipos usados por la partida.
       setTeams((prev) =>
         prev.map((team) =>
           teamIds.includes(team.id)
@@ -613,8 +621,11 @@ export function AppProvider({ children }) {
             : team,
         ),
       );
+
+      return true;
     } catch (err) {
       console.error("[createMatch]", err.response?.data?.error ?? err.message);
+      return false;
     }
   };
 
@@ -624,20 +635,26 @@ export function AppProvider({ children }) {
         status,
       });
 
+      const updatedMatch = response.data.match;
+
       setMatches((prev) =>
-        prev.map((match) =>
-          match.id === matchId ? response.data.match : match,
-        ),
+        prev.map((match) => (match.id === matchId ? updatedMatch : match)),
       );
 
+      // Si se finaliza o cancela, el backend cierra los equipos.
+      // Recargamos todo para sincronizar equipos, partidas y rankings.
       if (status === "Finalizada" || status === "Cancelada") {
+        await loadAll();
         await reloadRankings();
       }
+
+      return true;
     } catch (err) {
       console.error(
         "[updateMatchStatus]",
         err.response?.data?.error ?? err.message,
       );
+      return false;
     }
   };
 
@@ -651,7 +668,7 @@ export function AppProvider({ children }) {
     try {
       const match = matches.find((item) => item.id === matchId);
 
-      // Buscamos el teamId del jugador dentro de los equipos de la partida.
+      // Buscamos el equipo real del jugador dentro de la partida.
       const teamId =
         match?.teamResults?.find((teamResult) =>
           teamResult.playerIds?.includes(playerId),
@@ -683,19 +700,22 @@ export function AppProvider({ children }) {
 
           return {
             ...matchItem,
-            status: "Finalizada",
             playerResults: nextResults,
             playerIds: [...new Set([...(matchItem.playerIds ?? []), playerId])],
           };
         }),
       );
 
+      // El ranking solo cambiará realmente si la partida está Finalizada.
       await reloadRankings();
+
+      return true;
     } catch (err) {
       console.error(
         "[updateMatchResult]",
         err.response?.data?.error ?? err.message,
       );
+      return false;
     }
   };
 
@@ -725,17 +745,19 @@ export function AppProvider({ children }) {
 
           return {
             ...matchItem,
-            status: "En curso",
             playerResults: nextResults,
             playerIds: [...new Set([...(matchItem.playerIds ?? []), playerId])],
           };
         }),
       );
+
+      return true;
     } catch (err) {
       console.error(
         "[updateLiveRound]",
         err.response?.data?.error ?? err.message,
       );
+      return false;
     }
   };
 
