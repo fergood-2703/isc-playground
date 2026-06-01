@@ -475,6 +475,10 @@ export function AppProvider({ children }) {
   // =====================================================
   // EQUIPOS
   // =====================================================
+  //
+  // Los equipos son temporales.
+  // Se crean por juego y sirven para armar partidas.
+  // Solo pueden tener jugadores inscritos en ese juego.
 
   const createTeam = async ({
     name,
@@ -492,21 +496,30 @@ export function AppProvider({ children }) {
         matchId,
       });
 
-      setTeams((prev) => [...prev, response.data.team]);
+      const createdTeam = response.data.team;
+
+      setTeams((prev) => [...prev, createdTeam]);
+
+      return true;
     } catch (err) {
       console.error("[createTeam]", err.response?.data?.error ?? err.message);
+      return false;
     }
   };
 
   const updateTeam = async (teamId, updates) => {
     try {
       const response = await api.patch(`/teams/${teamId}`, updates);
+      const updatedTeam = response.data.team;
 
       setTeams((prev) =>
-        prev.map((team) => (team.id === teamId ? response.data.team : team)),
+        prev.map((team) => (team.id === teamId ? updatedTeam : team)),
       );
+
+      return true;
     } catch (err) {
       console.error("[updateTeam]", err.response?.data?.error ?? err.message);
+      return false;
     }
   };
 
@@ -515,8 +528,11 @@ export function AppProvider({ children }) {
       await api.delete(`/teams/${teamId}`);
 
       setTeams((prev) => prev.filter((team) => team.id !== teamId));
+
+      return true;
     } catch (err) {
       console.error("[deleteTeam]", err.response?.data?.error ?? err.message);
+      return false;
     }
   };
 
@@ -526,8 +542,10 @@ export function AppProvider({ children }) {
         playerId,
       });
 
+      const updatedTeam = response.data.team;
+
       setTeams((prev) =>
-        prev.map((team) => (team.id === teamId ? response.data.team : team)),
+        prev.map((team) => (team.id === teamId ? updatedTeam : team)),
       );
 
       return true;
@@ -543,15 +561,19 @@ export function AppProvider({ children }) {
   const removePlayerFromTeam = async (teamId, playerId) => {
     try {
       const response = await api.delete(`/teams/${teamId}/players/${playerId}`);
+      const updatedTeam = response.data.team;
 
       setTeams((prev) =>
-        prev.map((team) => (team.id === teamId ? response.data.team : team)),
+        prev.map((team) => (team.id === teamId ? updatedTeam : team)),
       );
+
+      return true;
     } catch (err) {
       console.error(
         "[removePlayerFromTeam]",
         err.response?.data?.error ?? err.message,
       );
+      return false;
     }
   };
 
