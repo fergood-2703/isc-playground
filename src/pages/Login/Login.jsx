@@ -20,8 +20,16 @@ export default function Login() {
   const location = useLocation();
   const { currentUser, updateCurrentUser } = useApp();
   // Ruta a la que el usuario quería entrar antes de iniciar sesión.
-  // Si no existe, usamos "/" como ruta por defecto.
-  const redirectTo = location.state?.from ?? "/";
+  //
+  // Ejemplo:
+  // - Intentó abrir /perfil sin sesión → redirectTo será "/perfil"
+  // - Intentó abrir /admin sin sesión → redirectTo será "/admin"
+  //
+  // Si entró directamente a /login, dejamos null.
+  // Así podremos mandarlo según su rol:
+  // - admin → /admin
+  // - usuario → /
+  const redirectTo = location.state?.from ?? null;
 
   const [activeInput, setActiveInput] = useState(null);
   const [showPassword, setShowPassword] = useState(false);

@@ -6,17 +6,23 @@
 // Ahora cargamos juegos, usuarios, inscripciones, equipos,
 // partidas y rankings desde la API.
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react"
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
 // Datos estáticos que todavía vienen del frontend.
 // No dependen de la base de datos.
-import { tournamentPhases, matchStatuses } from "../data/tournament"
+import { tournamentPhases, matchStatuses } from "../data/tournament";
 
 // Instancia de axios configurada con baseURL y token JWT.
-import api from "../api/axios.js"
+import api from "../api/axios.js";
 
 // Creamos el contexto.
-const AppContext = createContext()
+const AppContext = createContext();
 
 // =====================================================
 // HELPER: LEER USUARIO DEL LOCALSTORAGE
@@ -26,12 +32,12 @@ const AppContext = createContext()
 // recordar la sesión cuando recargas la página.
 const getUserFromStorage = () => {
   try {
-    const stored = localStorage.getItem("isc_user")
-    return stored ? JSON.parse(stored) : null
+    const stored = localStorage.getItem("isc_user");
+    return stored ? JSON.parse(stored) : null;
   } catch {
-    return null
+    return null;
   }
-}
+};
 
 // =====================================================
 // PROVIDER PRINCIPAL
@@ -45,22 +51,22 @@ export function AppProvider({ children }) {
   // Estos estados reemplazan a los datos mock del front original.
 
   // Usuario actual logueado.
-  const [currentUser, setCurrentUser] = useState(getUserFromStorage)
+  const [currentUser, setCurrentUser] = useState(getUserFromStorage);
 
   // Catálogo de juegos.
-  const [gameConfigs, setGameConfigs] = useState([])
+  const [gameConfigs, setGameConfigs] = useState([]);
 
   // Lista de usuarios/jugadores.
-  const [players, setPlayers] = useState([])
+  const [players, setPlayers] = useState([]);
 
   // Inscripciones de usuarios a juegos.
-  const [registrations, setRegistrations] = useState([])
+  const [registrations, setRegistrations] = useState([]);
 
   // Equipos temporales creados por admin.
-  const [teams, setTeams] = useState([])
+  const [teams, setTeams] = useState([]);
 
   // Partidas creadas por admin.
-  const [matches, setMatches] = useState([])
+  const [matches, setMatches] = useState([]);
 
   // Ranking por juego.
   // Ejemplo:
@@ -68,13 +74,13 @@ export function AppProvider({ children }) {
   //   "bomb-squad": [...],
   //   "counter-strike-16": [...]
   // }
-  const [rankingsByGame, setRankingsByGame] = useState({})
+  const [rankingsByGame, setRankingsByGame] = useState({});
 
   // Ranking global.
-  const [globalLeaderboard, setGlobalLeaderboard] = useState([])
+  const [globalLeaderboard, setGlobalLeaderboard] = useState([]);
 
   // Loading general para evitar redirecciones antes de cargar datos.
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(true);
 
   // =====================================================
   // HELPER: PETICIÓN SEGURA
@@ -86,17 +92,17 @@ export function AppProvider({ children }) {
   // Si falla /rankings/global, todavía queremos que cargue /games.
   const safeGet = async (url, responseKey, fallbackValue) => {
     try {
-      const response = await api.get(url)
-      return response.data?.[responseKey] ?? fallbackValue
+      const response = await api.get(url);
+      return response.data?.[responseKey] ?? fallbackValue;
     } catch (err) {
       console.warn(
         `[AppContext] No se pudo cargar ${url}:`,
-        err.response?.data?.error ?? err.message
-      )
+        err.response?.data?.error ?? err.message,
+      );
 
-      return fallbackValue
+      return fallbackValue;
     }
-  }
+  };
 
   // =====================================================
   // CARGA INICIAL DE DATOS
@@ -110,7 +116,7 @@ export function AppProvider({ children }) {
   // - Las inscripciones ahora se cargan por gameId para que
   //   también sirvan en el dashboard admin.
   const loadAll = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
 
     try {
       // -----------------------------
@@ -118,8 +124,8 @@ export function AppProvider({ children }) {
       // -----------------------------
       // Este es el dato más importante. Sin juegos, varias páginas
       // no tienen qué mostrar.
-      const games = await safeGet("/games", "games", [])
-      setGameConfigs(games)
+      const games = await safeGet("/games", "games", []);
+      setGameConfigs(games);
 
       // -----------------------------
       // 2. Cargar usuarios
@@ -128,15 +134,15 @@ export function AppProvider({ children }) {
       // - Dashboard > Usuarios
       // - Armar equipos
       // - Mostrar inscritos por juego
-      const users = await safeGet("/users", "users", [])
-      setPlayers(users)
+      const users = await safeGet("/users", "users", []);
+      setPlayers(users);
 
       // -----------------------------
       // 3. Cargar ranking global
       // -----------------------------
       // Si falla, no debe romper Home/Juegos.
-      const globalRanking = await safeGet("/rankings/global", "ranking", [])
-      setGlobalLeaderboard(globalRanking)
+      const globalRanking = await safeGet("/rankings/global", "ranking", []);
+      setGlobalLeaderboard(globalRanking);
 
       // -----------------------------
       // 4. Cargar datos por cada juego
@@ -151,8 +157,12 @@ export function AppProvider({ children }) {
                 safeGet(`/teams?gameId=${game.id}`, "teams", []),
                 safeGet(`/matches?gameId=${game.id}`, "matches", []),
                 safeGet(`/rankings?gameId=${game.id}`, "ranking", []),
-                safeGet(`/registrations?gameId=${game.id}`, "registrations", []),
-              ])
+                safeGet(
+                  `/registrations?gameId=${game.id}`,
+                  "registrations",
+                  [],
+                ),
+              ]);
 
             return {
               gameId: game.id,
@@ -160,72 +170,72 @@ export function AppProvider({ children }) {
               matches: gameMatches,
               ranking: gameRanking,
               registrations: gameRegistrations,
-            }
-          })
-        )
+            };
+          }),
+        );
 
         // Unimos todos los equipos de todos los juegos.
-        setTeams(perGameResults.flatMap((item) => item.teams))
+        setTeams(perGameResults.flatMap((item) => item.teams));
 
         // Unimos todas las partidas de todos los juegos.
-        setMatches(perGameResults.flatMap((item) => item.matches))
+        setMatches(perGameResults.flatMap((item) => item.matches));
 
         // Unimos todas las inscripciones de todos los juegos.
         // Esto permite que getRegisteredPlayers(gameId) funcione
         // aunque el usuario actual no sea admin.
-        setRegistrations(perGameResults.flatMap((item) => item.registrations))
+        setRegistrations(perGameResults.flatMap((item) => item.registrations));
 
         // Convertimos rankings por juego en un objeto:
         // { gameId: ranking[] }
         setRankingsByGame(
           Object.fromEntries(
-            perGameResults.map((item) => [item.gameId, item.ranking])
-          )
-        )
+            perGameResults.map((item) => [item.gameId, item.ranking]),
+          ),
+        );
       } else {
         // Si no hay juegos, limpiamos estados dependientes.
-        setTeams([])
-        setMatches([])
-        setRegistrations([])
-        setRankingsByGame({})
+        setTeams([]);
+        setMatches([]);
+        setRegistrations([]);
+        setRankingsByGame({});
       }
     } catch (err) {
       console.error(
         "[AppContext] Error general cargando datos:",
-        err.response?.data?.error ?? err.message
-      )
+        err.response?.data?.error ?? err.message,
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
   // Ejecutamos loadAll cuando se monta la app.
   useEffect(() => {
-    loadAll()
-  }, [loadAll])
+    loadAll();
+  }, [loadAll]);
 
   // =====================================================
   // RECARGAR RANKINGS
   // =====================================================
   // Se usa después de registrar resultados de partidas.
   const reloadRankings = async () => {
-    const globalRanking = await safeGet("/rankings/global", "ranking", [])
+    const globalRanking = await safeGet("/rankings/global", "ranking", []);
 
     const gameRankings = await Promise.all(
       gameConfigs.map(async (game) => {
         const ranking = await safeGet(
           `/rankings?gameId=${game.id}`,
           "ranking",
-          []
-        )
+          [],
+        );
 
-        return [game.id, ranking]
-      })
-    )
+        return [game.id, ranking];
+      }),
+    );
 
-    setGlobalLeaderboard(globalRanking)
-    setRankingsByGame(Object.fromEntries(gameRankings))
-  }
+    setGlobalLeaderboard(globalRanking);
+    setRankingsByGame(Object.fromEntries(gameRankings));
+  };
 
   // =====================================================
   // USUARIO / SESIÓN
@@ -234,100 +244,117 @@ export function AppProvider({ children }) {
   // Actualiza currentUser y también localStorage.
   // Se usa en Login y Perfil.
   const updateCurrentUser = (updates) => {
-    const updatedUser = currentUser
-      ? { ...currentUser, ...updates }
-      : updates
+    const updatedUser = currentUser ? { ...currentUser, ...updates } : updates;
 
-    setCurrentUser(updatedUser)
-    localStorage.setItem("isc_user", JSON.stringify(updatedUser))
+    setCurrentUser(updatedUser);
+    localStorage.setItem("isc_user", JSON.stringify(updatedUser));
 
     // También sincronizamos el usuario dentro de players.
     // Así Perfil y Dashboard > Usuarios ven el cambio sin recargar.
     setPlayers((prev) => {
-      const exists = prev.some((player) => player.id === updatedUser.id)
+      const exists = prev.some((player) => player.id === updatedUser.id);
 
       if (exists) {
         return prev.map((player) =>
-          player.id === updatedUser.id
-            ? { ...player, ...updatedUser }
-            : player
-        )
+          player.id === updatedUser.id ? { ...player, ...updatedUser } : player,
+        );
       }
 
-      return [updatedUser, ...prev]
-    })
-  }
+      return [updatedUser, ...prev];
+    });
+  };
 
   // Cierra sesión.
   const logout = () => {
-    localStorage.removeItem("isc_user")
-    localStorage.removeItem("isc_token")
-    setCurrentUser(null)
-  }
+    localStorage.removeItem("isc_user");
+    localStorage.removeItem("isc_token");
+    setCurrentUser(null);
+  };
 
   // =====================================================
-  // JUEGOS
+  // CREAR JUEGO
   // =====================================================
-
+  //
+  // Usado por Dashboard > Juegos.
+  // Recibe un payload ya preparado desde el formulario admin.
+  //
+  // Importante:
+  // - Ya NO usamos Date.now() como legacyId.
+  // - Date.now() es demasiado grande para un Int de PostgreSQL.
+  // - El formulario admin debe mandar legacyId pequeño: 1, 2, 3, 4...
   const createGame = async (game) => {
     try {
-      // legacyId es importante porque Detalles.jsx navega con /juego/:id.
-      // Si no viene, generamos uno temporal.
-      const payload = {
-        ...game,
-        legacyId: game.legacyId ?? Date.now(),
-      }
+      const response = await api.post("/games", game);
+      const createdGame = response.data.game;
 
-      const response = await api.post("/games", payload)
-      setGameConfigs((prev) => [response.data.game, ...prev])
+      // Agregamos el juego recién creado al estado local.
+      setGameConfigs((prev) => [createdGame, ...prev]);
+
+      // Inicializamos su ranking vacío para evitar undefined.
+      setRankingsByGame((prev) => ({
+        ...prev,
+        [createdGame.id]: [],
+      }));
+
+      return true;
     } catch (err) {
-      console.error("[createGame]", err.response?.data?.error ?? err.message)
+      console.error("[createGame]", err.response?.data?.error ?? err.message);
+      return false;
     }
-  }
+  };
 
+  // =====================================================
+  // ACTUALIZAR JUEGO
+  // =====================================================
+  //
+  // Usado por Dashboard > Juegos.
+  // Actualiza datos generales, reglas, métricas y mapas.
   const updateGame = async (gameId, updates) => {
     try {
-      const response = await api.patch(`/games/${gameId}`, updates)
+      const response = await api.patch(`/games/${gameId}`, updates);
+      const updatedGame = response.data.game;
 
       setGameConfigs((prev) =>
-        prev.map((game) =>
-          game.id === gameId ? response.data.game : game
-        )
-      )
+        prev.map((game) => (game.id === gameId ? updatedGame : game)),
+      );
+
+      return true;
     } catch (err) {
-      console.error("[updateGame]", err.response?.data?.error ?? err.message)
+      console.error("[updateGame]", err.response?.data?.error ?? err.message);
+      return false;
     }
-  }
+  };
 
   const deleteGame = async (gameId) => {
     try {
-      await api.delete(`/games/${gameId}`)
+      await api.delete(`/games/${gameId}`);
 
       // Limpiamos localmente todo lo relacionado con ese juego.
-      setGameConfigs((prev) => prev.filter((game) => game.id !== gameId))
-      setTeams((prev) => prev.filter((team) => team.gameId !== gameId))
-      setMatches((prev) => prev.filter((match) => match.gameId !== gameId))
+      setGameConfigs((prev) => prev.filter((game) => game.id !== gameId));
+      setTeams((prev) => prev.filter((team) => team.gameId !== gameId));
+      setMatches((prev) => prev.filter((match) => match.gameId !== gameId));
       setRegistrations((prev) =>
-        prev.filter((registration) => registration.gameId !== gameId)
-      )
+        prev.filter((registration) => registration.gameId !== gameId),
+      );
     } catch (err) {
-      console.error("[deleteGame]", err.response?.data?.error ?? err.message)
+      console.error("[deleteGame]", err.response?.data?.error ?? err.message);
     }
-  }
+  };
 
   const toggleGameStatus = async (gameId) => {
     try {
-      const response = await api.patch(`/games/${gameId}/status`)
+      const response = await api.patch(`/games/${gameId}/status`);
 
       setGameConfigs((prev) =>
-        prev.map((game) =>
-          game.id === gameId ? response.data.game : game
-        )
-      )
+        prev.map((game) => (game.id === gameId ? response.data.game : game)),
+      );
     } catch (err) {
-      console.error("[toggleGameStatus]", err.response?.data?.error ?? err.message)
+      console.error(
+        "[toggleGameStatus]",
+        err.response?.data?.error ?? err.message,
+      );
     }
-  }
+  };
 
   // =====================================================
   // INSCRIPCIONES
@@ -337,56 +364,58 @@ export function AppProvider({ children }) {
     // Si no hay sesión, no inscribimos.
     // Luego podemos mejorar esto para redirigir a /login.
     if (!currentUser || !userId) {
-      console.warn("[registerToGame] No hay usuario logueado")
-      return false
+      console.warn("[registerToGame] No hay usuario logueado");
+      return false;
     }
 
     // Evita duplicados en frontend antes de llamar al backend.
     const alreadyRegistered = registrations.some(
       (registration) =>
-        registration.gameId === gameId &&
-        registration.userId === userId
-    )
+        registration.gameId === gameId && registration.userId === userId,
+    );
 
     if (alreadyRegistered) {
-      return true
+      return true;
     }
 
     try {
       const response = await api.post("/registrations", {
         userId,
         gameId,
-      })
+      });
 
-      const registration = response.data.registration
+      const registration = response.data.registration;
 
-      setRegistrations((prev) => [...prev, registration])
+      setRegistrations((prev) => [...prev, registration]);
 
       // Actualizamos los juegos del usuario actual.
       updateCurrentUser({
         games: [...new Set([...(currentUser.games ?? []), gameId])],
-      })
+      });
 
-      return true
+      return true;
     } catch (err) {
-      console.error("[registerToGame]", err.response?.data?.error ?? err.message)
-      return false
+      console.error(
+        "[registerToGame]",
+        err.response?.data?.error ?? err.message,
+      );
+      return false;
     }
-  }
+  };
 
   const cancelRegistration = async (gameId, userId = currentUser?.id) => {
     if (!currentUser || !userId) {
-      console.warn("[cancelRegistration] No hay usuario logueado")
-      return false
+      console.warn("[cancelRegistration] No hay usuario logueado");
+      return false;
     }
 
     const registration = registrations.find(
-      (item) => item.gameId === gameId && item.userId === userId
-    )
+      (item) => item.gameId === gameId && item.userId === userId,
+    );
 
     if (!registration) {
-      console.warn("[cancelRegistration] No existe inscripción local")
-      return false
+      console.warn("[cancelRegistration] No existe inscripción local");
+      return false;
     }
 
     try {
@@ -394,34 +423,35 @@ export function AppProvider({ children }) {
       // Esto funcionará bien cuando el backend devuelva el ID real
       // de la inscripción. Si el backend devuelve un ID inventado
       // tipo reg-u-1-bomb-squad, lo corregimos en el siguiente paso.
-      await api.delete(`/registrations/${registration.id}`)
+      await api.delete(`/registrations/${registration.id}`);
 
       setRegistrations((prev) =>
         prev.filter(
-          (item) =>
-            !(item.gameId === gameId && item.userId === userId)
-        )
-      )
+          (item) => !(item.gameId === gameId && item.userId === userId),
+        ),
+      );
 
       updateCurrentUser({
         games: (currentUser.games ?? []).filter((id) => id !== gameId),
-      })
+      });
 
-      return true
+      return true;
     } catch (err) {
-      console.error("[cancelRegistration]", err.response?.data?.error ?? err.message)
-      return false
+      console.error(
+        "[cancelRegistration]",
+        err.response?.data?.error ?? err.message,
+      );
+      return false;
     }
-  }
+  };
 
   // Devuelve la inscripción del usuario actual a un juego.
   const getRegistration = (gameId, userId = currentUser?.id) => {
     return registrations.find(
       (registration) =>
-        registration.gameId === gameId &&
-        registration.userId === userId
-    )
-  }
+        registration.gameId === gameId && registration.userId === userId,
+    );
+  };
 
   // Devuelve los usuarios inscritos a un juego.
   // Esto lo usan Home, Juegos y Dashboard > Equipos.
@@ -429,20 +459,18 @@ export function AppProvider({ children }) {
     return registrations
       .filter((registration) => registration.gameId === gameId)
       .map((registration) => {
-        const player = players.find(
-          (item) => item.id === registration.userId
-        )
+        const player = players.find((item) => item.id === registration.userId);
 
-        if (!player) return null
+        if (!player) return null;
 
         return {
           ...player,
           registrationStatus: registration.status,
           registeredAt: registration.registeredAt,
-        }
+        };
       })
-      .filter(Boolean)
-  }
+      .filter(Boolean);
+  };
 
   // =====================================================
   // EQUIPOS
@@ -462,70 +490,70 @@ export function AppProvider({ children }) {
         gameId,
         playerIds,
         matchId,
-      })
+      });
 
-      setTeams((prev) => [...prev, response.data.team])
+      setTeams((prev) => [...prev, response.data.team]);
     } catch (err) {
-      console.error("[createTeam]", err.response?.data?.error ?? err.message)
+      console.error("[createTeam]", err.response?.data?.error ?? err.message);
     }
-  }
+  };
 
   const updateTeam = async (teamId, updates) => {
     try {
-      const response = await api.patch(`/teams/${teamId}`, updates)
+      const response = await api.patch(`/teams/${teamId}`, updates);
 
       setTeams((prev) =>
-        prev.map((team) =>
-          team.id === teamId ? response.data.team : team
-        )
-      )
+        prev.map((team) => (team.id === teamId ? response.data.team : team)),
+      );
     } catch (err) {
-      console.error("[updateTeam]", err.response?.data?.error ?? err.message)
+      console.error("[updateTeam]", err.response?.data?.error ?? err.message);
     }
-  }
+  };
 
   const deleteTeam = async (teamId) => {
     try {
-      await api.delete(`/teams/${teamId}`)
+      await api.delete(`/teams/${teamId}`);
 
-      setTeams((prev) => prev.filter((team) => team.id !== teamId))
+      setTeams((prev) => prev.filter((team) => team.id !== teamId));
     } catch (err) {
-      console.error("[deleteTeam]", err.response?.data?.error ?? err.message)
+      console.error("[deleteTeam]", err.response?.data?.error ?? err.message);
     }
-  }
+  };
 
   const assignPlayerToTeam = async (teamId, playerId) => {
     try {
       const response = await api.post(`/teams/${teamId}/players`, {
         playerId,
-      })
+      });
 
       setTeams((prev) =>
-        prev.map((team) =>
-          team.id === teamId ? response.data.team : team
-        )
-      )
+        prev.map((team) => (team.id === teamId ? response.data.team : team)),
+      );
 
-      return true
+      return true;
     } catch (err) {
-      console.error("[assignPlayerToTeam]", err.response?.data?.error ?? err.message)
-      return false
+      console.error(
+        "[assignPlayerToTeam]",
+        err.response?.data?.error ?? err.message,
+      );
+      return false;
     }
-  }
+  };
 
   const removePlayerFromTeam = async (teamId, playerId) => {
     try {
-      const response = await api.delete(`/teams/${teamId}/players/${playerId}`)
+      const response = await api.delete(`/teams/${teamId}/players/${playerId}`);
 
       setTeams((prev) =>
-        prev.map((team) =>
-          team.id === teamId ? response.data.team : team
-        )
-      )
+        prev.map((team) => (team.id === teamId ? response.data.team : team)),
+      );
     } catch (err) {
-      console.error("[removePlayerFromTeam]", err.response?.data?.error ?? err.message)
+      console.error(
+        "[removePlayerFromTeam]",
+        err.response?.data?.error ?? err.message,
+      );
     }
-  }
+  };
 
   // =====================================================
   // PARTIDAS
@@ -549,60 +577,63 @@ export function AppProvider({ children }) {
         scheduledAt,
         duration,
         teamIds,
-      })
+      });
 
-      const createdMatch = response.data.match
+      const createdMatch = response.data.match;
 
-      setMatches((prev) => [createdMatch, ...prev])
+      setMatches((prev) => [createdMatch, ...prev]);
 
       // Marcamos localmente qué equipos quedaron asociados a la partida.
       setTeams((prev) =>
         prev.map((team) =>
           teamIds.includes(team.id)
             ? { ...team, matchId: createdMatch.id }
-            : team
-        )
-      )
+            : team,
+        ),
+      );
     } catch (err) {
-      console.error("[createMatch]", err.response?.data?.error ?? err.message)
+      console.error("[createMatch]", err.response?.data?.error ?? err.message);
     }
-  }
+  };
 
   const updateMatchStatus = async (matchId, status) => {
     try {
       const response = await api.patch(`/matches/${matchId}/status`, {
         status,
-      })
+      });
 
       setMatches((prev) =>
         prev.map((match) =>
-          match.id === matchId ? response.data.match : match
-        )
-      )
+          match.id === matchId ? response.data.match : match,
+        ),
+      );
 
       if (status === "Finalizada" || status === "Cancelada") {
-        await reloadRankings()
+        await reloadRankings();
       }
     } catch (err) {
-      console.error("[updateMatchStatus]", err.response?.data?.error ?? err.message)
+      console.error(
+        "[updateMatchStatus]",
+        err.response?.data?.error ?? err.message,
+      );
     }
-  }
+  };
 
   const updateMatchResult = async (
     matchId,
     playerId,
     stats,
     points = 0,
-    won = false
+    won = false,
   ) => {
     try {
-      const match = matches.find((item) => item.id === matchId)
+      const match = matches.find((item) => item.id === matchId);
 
       // Buscamos el teamId del jugador dentro de los equipos de la partida.
       const teamId =
         match?.teamResults?.find((teamResult) =>
-          teamResult.playerIds?.includes(playerId)
-        )?.teamId ?? ""
+          teamResult.playerIds?.includes(playerId),
+        )?.teamId ?? "";
 
       const response = await api.post(`/matches/${matchId}/results`, {
         playerId,
@@ -610,80 +641,81 @@ export function AppProvider({ children }) {
         stats,
         points,
         won,
-      })
+      });
 
-      const result = response.data.result
+      const result = response.data.result;
 
       setMatches((prev) =>
         prev.map((matchItem) => {
-          if (matchItem.id !== matchId) return matchItem
+          if (matchItem.id !== matchId) return matchItem;
 
-          const existingResults = matchItem.playerResults ?? []
+          const existingResults = matchItem.playerResults ?? [];
 
           const nextResults = existingResults.some(
-            (item) => item.playerId === playerId
+            (item) => item.playerId === playerId,
           )
             ? existingResults.map((item) =>
-                item.playerId === playerId ? result : item
+                item.playerId === playerId ? result : item,
               )
-            : [...existingResults, result]
+            : [...existingResults, result];
 
           return {
             ...matchItem,
             status: "Finalizada",
             playerResults: nextResults,
             playerIds: [...new Set([...(matchItem.playerIds ?? []), playerId])],
-          }
-        })
-      )
+          };
+        }),
+      );
 
-      await reloadRankings()
+      await reloadRankings();
     } catch (err) {
-      console.error("[updateMatchResult]", err.response?.data?.error ?? err.message)
+      console.error(
+        "[updateMatchResult]",
+        err.response?.data?.error ?? err.message,
+      );
     }
-  }
+  };
 
-  const updateLiveRound = async (
-    matchId,
-    playerId,
-    metricKey,
-    delta = 1
-  ) => {
+  const updateLiveRound = async (matchId, playerId, metricKey, delta = 1) => {
     try {
       const response = await api.patch(`/matches/${matchId}/live`, {
         playerId,
         metricKey,
         delta,
-      })
+      });
 
-      const result = response.data.result
+      const result = response.data.result;
 
       setMatches((prev) =>
         prev.map((matchItem) => {
-          if (matchItem.id !== matchId) return matchItem
+          if (matchItem.id !== matchId) return matchItem;
 
-          const existingResults = matchItem.playerResults ?? []
+          const existingResults = matchItem.playerResults ?? [];
 
           const nextResults = existingResults.some(
-            (item) => item.playerId === playerId
+            (item) => item.playerId === playerId,
           )
             ? existingResults.map((item) =>
-                item.playerId === playerId ? result : item
+                item.playerId === playerId ? result : item,
               )
-            : [...existingResults, result]
+            : [...existingResults, result];
 
           return {
             ...matchItem,
             status: "En curso",
             playerResults: nextResults,
             playerIds: [...new Set([...(matchItem.playerIds ?? []), playerId])],
-          }
-        })
-      )
+          };
+        }),
+      );
     } catch (err) {
-      console.error("[updateLiveRound]", err.response?.data?.error ?? err.message)
+      console.error(
+        "[updateLiveRound]",
+        err.response?.data?.error ?? err.message,
+      );
     }
-  }
+  };
 
   // =====================================================
   // VALOR COMPARTIDO DEL CONTEXTO
@@ -736,14 +768,10 @@ export function AppProvider({ children }) {
     // Utilidades
     reloadRankings,
     loadAll,
-  }
+  };
 
-  return (
-    <AppContext.Provider value={value}>
-      {children}
-    </AppContext.Provider>
-  )
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
 // Hook personalizado para usar el contexto fácilmente.
-export const useApp = () => useContext(AppContext)
+export const useApp = () => useContext(AppContext);

@@ -176,3 +176,61 @@ label { color: #cbd5e1; font-size: 13px; font-weight: 700; display: grid; gap: 8
   .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 10; }
   .sidebar.closed { transform: translateX(-100%); }
 }
+
+/* =====================================================
+   BOTÓN DEL LOGO EN EL DASHBOARD
+   ===================================================== */
+
+/* 
+  El logo del panel admin ahora es un botón.
+  Este reset evita que se vea como botón HTML normal.
+*/
+.sidebar-home-link {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* 
+  Efecto visual suave para indicar que se puede hacer clic.
+*/
+.sidebar-home-link:hover {
+  background: rgba(6, 182, 212, 0.06);
+}
+
+/* =====================================================
+   BOTÓN DE CERRAR SESIÓN EN DASHBOARD
+   ===================================================== */
+
+/* 
+  Botón "Salir" dentro de la tarjeta del usuario admin.
+  Ahora tiene ícono + texto para que no parezca decorativo.
+*/
+.dashboard-logout-btn {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(15, 23, 42, 0.22);
+  color: white;
+  cursor: pointer;
+  margin-left: 10px;
+  padding: 7px 10px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  transition: 0.2s ease;
+}
+
+/* Texto del botón */
+.dashboard-logout-btn span {
+  font-size: 0.78rem;
+}
+
+/* Hover para que se note que es clickeable */
+.dashboard-logout-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}

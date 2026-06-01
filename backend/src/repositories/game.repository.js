@@ -1,14 +1,18 @@
 // =============================
 // REPOSITORIO DE JUEGOS
 // =============================
-
-// Es la única capa que habla directamente con la base de datos.
-// Incluye scoringRules y metrics en todas las consultas
-// porque el front siempre los necesita junto al juego.
+//
+// Esta capa es la única que habla directamente con Prisma.
+// Aquí NO va lógica de negocio, solo consultas a la base de datos.
+//
+// Cambio importante de este paso:
+// - Al actualizar un juego, también actualizamos sus scoringRules y metrics.
+// - Antes solo se actualizaban campos simples del juego.
+// - Eso hacía que cambios en reglas/métricas desde el dashboard no se reflejaran bien.
 
 import prisma from '../config/db.js'
 
-// Campos que siempre incluimos al consultar un juego
+// Relaciones que siempre queremos traer junto con cada juego.
 const includeRelations = {
   scoringRules: {
     orderBy: { order: 'asc' }
@@ -21,14 +25,20 @@ const includeRelations = {
 // ─────────────────────────────
 const findAll = async () => {
   return await prisma.game.findMany({
-    include: includeRelations
+    include: includeRelations,
+    orderBy: {
+      legacyId: 'asc'
+    }
   })
 }
 
 // ─────────────────────────────
-// BUSCAR JUEGO POR SLUG
+// BUSCAR JUEGO POR ID / SLUG
 // ─────────────────────────────
-// Ej: "bomb-squad", "counter-strike-16"
+//
+// Ejemplo:
+// bomb-squad
+// counter-strike-16
 const findById = async (id) => {
   return await prisma.game.findUnique({
     where: { id },
@@ -39,7 +49,10 @@ const findById = async (id) => {
 // ─────────────────────────────
 // BUSCAR JUEGO POR LEGACY ID
 // ─────────────────────────────
-// Usado en Detalles.jsx que navega por /juego/1, /juego/2, /juego/3
+//
+// Usado para rutas como:
+// /juego/1
+// /juego/2
 const findByLegacyId = async (legacyId) => {
   return await prisma.game.findUnique({
     where: { legacyId },
@@ -50,25 +63,34 @@ const findByLegacyId = async (legacyId) => {
 // ─────────────────────────────
 // CREAR JUEGO
 // ─────────────────────────────
-// Crea el juego junto con sus scoringRules y metrics en una sola operación
+//
+// Crea el juego junto con:
+// - scoringRules
+// - metrics
 const create = async (data) => {
-  const { scoringRules, metrics, ...gameData } = data
+  const {
+    scoringRules = [],
+    metrics = [],
+    ...gameData
+  } = data
 
   return await prisma.game.create({
     data: {
       ...gameData,
-      // Creamos las scoringRules anidadas
+
+      // Reglas de puntuación del juego.
       scoringRules: {
         create: scoringRules.map((rule, index) => ({
           key: rule.key,
           label: rule.label,
-          direction: rule.direction,
-          order: index // guardamos el orden para mantener prioridad
+          direction: rule.direction || 'desc',
+          order: index
         }))
       },
-      // Creamos las metrics anidadas
+
+      // Métricas del juego.
       metrics: {
-        create: metrics.map(metric => ({
+        create: metrics.map((metric) => ({
           key: metric.key,
           label: metric.label,
           type: metric.type || 'number',
@@ -83,12 +105,55 @@ const create = async (data) => {
 // ─────────────────────────────
 // ACTUALIZAR JUEGO
 // ─────────────────────────────
+//
+// Cambio importante:
+// Prisma no actualiza automáticamente arrays relacionados.
+// Por eso aquí hacemos:
+//
+// scoringRules: borrar las anteriores y crear las nuevas.
+// metrics: borrar las anteriores y crear las nuevas.
+//
+// Así el dashboard sí puede modificar reglas y métricas.
 const update = async (id, data) => {
-  const { scoringRules, metrics, ...gameData } = data
+  const {
+    scoringRules,
+    metrics,
+    ...gameData
+  } = data
+
+  const updateData = {
+    ...gameData
+  }
+
+  // Si el frontend mandó scoringRules, reemplazamos las anteriores.
+  if (Array.isArray(scoringRules)) {
+    updateData.scoringRules = {
+      deleteMany: {},
+      create: scoringRules.map((rule, index) => ({
+        key: rule.key,
+        label: rule.label,
+        direction: rule.direction || 'desc',
+        order: index
+      }))
+    }
+  }
+
+  // Si el frontend mandó metrics, reemplazamos las anteriores.
+  if (Array.isArray(metrics)) {
+    updateData.metrics = {
+      deleteMany: {},
+      create: metrics.map((metric) => ({
+        key: metric.key,
+        label: metric.label,
+        type: metric.type || 'number',
+        defaultValue: metric.defaultValue ?? 0
+      }))
+    }
+  }
 
   return await prisma.game.update({
     where: { id },
-    data: gameData,
+    data: updateData,
     include: includeRelations
   })
 }
@@ -96,12 +161,20 @@ const update = async (id, data) => {
 // ─────────────────────────────
 // ELIMINAR JUEGO
 // ─────────────────────────────
-// El cascade en schema.prisma elimina automáticamente
-// todas las relaciones (inscripciones, equipos, partidas, métricas)
+//
+// En schema.prisma las relaciones tienen onDelete: Cascade.
+// Eso significa que al borrar un juego, se borran sus datos relacionados.
 const remove = async (id) => {
   return await prisma.game.delete({
     where: { id }
   })
 }
 
-export { findAll, findById, findByLegacyId, create, update, remove }
+export {
+  findAll,
+  findById,
+  findByLegacyId,
+  create,
+  update,
+  remove
+}

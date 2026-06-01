@@ -1,9 +1,16 @@
 // =============================
 // SERVICIO DE JUEGOS
 // =============================
-
-// Aquí vive toda la lógica de negocio de juegos.
-// No sabe nada de HTTP, solo procesa datos y llama al repositorio.
+//
+// Aquí va la lógica de negocio de juegos.
+// Esta capa recibe datos del controlador, los valida/normaliza,
+// y luego llama al repositorio.
+//
+// Cambio importante de este paso:
+// - Limpiamos el payload antes de mandarlo a Prisma.
+// - Evitamos que lleguen campos del formulario como rulesText, metricsText o mapsText.
+// - Validamos legacyId.
+// - Evitamos duplicados por id y legacyId.
 
 import * as gameRepository from '../repositories/game.repository.js'
 
@@ -18,14 +25,15 @@ const getAll = async () => {
 // ─────────────────────────────
 // OBTENER JUEGO POR ID
 // ─────────────────────────────
-// El :id puede ser slug ("bomb-squad") o legacyId (1, 2, 3)
-// Detalles.jsx navega por legacyId, el resto del sistema por slug
+//
+// El id puede ser:
+// - slug: bomb-squad
+// - legacyId numérico: 1, 2, 3
 const getById = async (id) => {
-  // Si el id es numérico, buscamos por legacyId
-  // Si es string, buscamos por slug
-  const isNumeric = !isNaN(id)
+  const isNumeric = !Number.isNaN(Number(id))
+
   const game = isNumeric
-    ? await gameRepository.findByLegacyId(parseInt(id))
+    ? await gameRepository.findByLegacyId(Number(id))
     : await gameRepository.findById(id)
 
   if (!game) {
@@ -38,33 +46,31 @@ const getById = async (id) => {
 // ─────────────────────────────
 // CREAR JUEGO
 // ─────────────────────────────
-// Recibe todo el objeto game según el modelo 1.2 del reporte
 const create = async (data) => {
-  const {
-    id, legacyId, name, shortName, image, accent,
-    teamSize, duration, format, status, description,
-    pointFormula, winCondition, maxPlayers, matchType,
-    maps, visualMetrics, scoringRules, metrics
-  } = data
+  const payload = normalizeGamePayload(data, {
+    isCreate: true
+  })
 
-  // Verificamos que el slug no esté en uso
-  const existing = await gameRepository.findById(id)
-  if (existing) {
+  // Validación básica.
+  if (!payload.id || !payload.name || !payload.legacyId) {
+    throw new Error('id, name y legacyId son requeridos')
+  }
+
+  // Evitamos duplicar slug.
+  const existingById = await gameRepository.findById(payload.id)
+
+  if (existingById) {
     throw new Error('Ya existe un juego con ese ID')
   }
 
-  const game = await gameRepository.create({
-    id, legacyId, name, shortName, image, accent,
-    teamSize, duration, format,
-    status: status || 'Activo',
-    description, pointFormula, winCondition,
-    maxPlayers, matchType,
-    maps: maps || [],
-    visualMetrics: visualMetrics || [],
-    scoringRules: scoringRules || [],
-    metrics: metrics || []
-  })
+  // Evitamos duplicar legacyId.
+  const existingByLegacyId = await gameRepository.findByLegacyId(payload.legacyId)
 
+  if (existingByLegacyId) {
+    throw new Error('Ya existe un juego con ese legacyId')
+  }
+
+  const game = await gameRepository.create(payload)
   return formatGame(game)
 }
 
@@ -73,21 +79,30 @@ const create = async (data) => {
 // ─────────────────────────────
 const update = async (id, data) => {
   const existing = await gameRepository.findById(id)
+
   if (!existing) {
     throw new Error('Juego no encontrado')
   }
 
-  const game = await gameRepository.update(id, data)
+  const payload = normalizeGamePayload(data, {
+    isCreate: false
+  })
+
+  // No permitimos cambiar id ni legacyId desde edición normal.
+  // Cambiarlos puede romper relaciones existentes.
+  delete payload.id
+  delete payload.legacyId
+
+  const game = await gameRepository.update(id, payload)
   return formatGame(game)
 }
 
 // ─────────────────────────────
 // ELIMINAR JUEGO
 // ─────────────────────────────
-// El cascade en la BD elimina automáticamente
-// partidas, equipos, inscripciones y métricas relacionadas
 const remove = async (id) => {
   const existing = await gameRepository.findById(id)
+
   if (!existing) {
     throw new Error('Juego no encontrado')
   }
@@ -98,24 +113,89 @@ const remove = async (id) => {
 // ─────────────────────────────
 // TOGGLE STATUS
 // ─────────────────────────────
-// Alterna entre "Activo" y "Desactivado"
+//
+// Alterna entre Activo y Desactivado.
 const toggleStatus = async (id) => {
   const existing = await gameRepository.findById(id)
+
   if (!existing) {
     throw new Error('Juego no encontrado')
   }
 
-  // Si está Activo → Desactivado, si está Desactivado → Activo
-  const newStatus = existing.status === 'Activo' ? 'Desactivado' : 'Activo'
-  const game = await gameRepository.update(id, { status: newStatus })
+  const newStatus = existing.status === 'Activo'
+    ? 'Desactivado'
+    : 'Activo'
+
+  const game = await gameRepository.update(id, {
+    status: newStatus
+  })
+
   return formatGame(game)
 }
 
 // ─────────────────────────────
-// HELPER: FORMATEAR JUEGO
+// NORMALIZAR PAYLOAD
 // ─────────────────────────────
-// Estructura el juego exactamente como el front lo espera
-// según el modelo 1.2 del reporte
+//
+// Este helper solo deja pasar los campos que realmente existen
+// en el modelo Game de Prisma.
+//
+// Esto evita errores tipo:
+// Unknown argument rulesText
+// Unknown argument metricsText
+// Unknown argument mapsText
+const normalizeGamePayload = (data, { isCreate }) => {
+  const legacyIdNumber = Number(data.legacyId)
+
+  const payload = {
+    // Campos principales.
+    id: data.id,
+    legacyId: Number.isInteger(legacyIdNumber) ? legacyIdNumber : undefined,
+    name: data.name,
+    shortName: data.shortName || data.name,
+    image: data.image || '',
+    accent: data.accent || '#06b6d4',
+    teamSize: data.teamSize || data.maxPlayers || 'Sin definir',
+    duration: data.duration || 'Configurable',
+    format: data.format || data.matchType || 'Competitivo',
+    status: data.status || 'Activo',
+    description: data.description || '',
+    pointFormula: data.pointFormula || '',
+    winCondition: data.winCondition || '',
+    maxPlayers: data.maxPlayers || data.teamSize || 'Sin definir',
+    matchType: data.matchType || data.format || 'Competitivo',
+
+    // Arrays del modelo Game.
+    maps: Array.isArray(data.maps) ? data.maps : [],
+    visualMetrics: Array.isArray(data.visualMetrics) ? data.visualMetrics : [],
+
+    // Relaciones.
+    scoringRules: Array.isArray(data.scoringRules)
+      ? data.scoringRules
+      : [],
+
+    metrics: Array.isArray(data.metrics)
+      ? data.metrics
+      : []
+  }
+
+  // En update no queremos mandar undefined innecesarios.
+  if (!isCreate) {
+    Object.keys(payload).forEach((key) => {
+      if (payload[key] === undefined) {
+        delete payload[key]
+      }
+    })
+  }
+
+  return payload
+}
+
+// ─────────────────────────────
+// FORMATEAR JUEGO
+// ─────────────────────────────
+//
+// Devuelve el juego exactamente como el frontend lo espera.
 const formatGame = (game) => {
   return {
     id: game.id,
@@ -135,21 +215,29 @@ const formatGame = (game) => {
     matchType: game.matchType,
     maps: game.maps || [],
     visualMetrics: game.visualMetrics || [],
-    // scoringRules ordenadas por su campo order
+
     scoringRules: game.scoringRules
       ?.sort((a, b) => a.order - b.order)
-      .map(r => ({
-        key: r.key,
-        label: r.label,
-        direction: r.direction
+      .map((rule) => ({
+        key: rule.key,
+        label: rule.label,
+        direction: rule.direction
       })) || [],
-    metrics: game.metrics?.map(m => ({
-      key: m.key,
-      label: m.label,
-      type: m.type,
-      defaultValue: m.defaultValue
+
+    metrics: game.metrics?.map((metric) => ({
+      key: metric.key,
+      label: metric.label,
+      type: metric.type,
+      defaultValue: metric.defaultValue
     })) || []
   }
 }
 
-export { getAll, getById, create, update, remove, toggleStatus }
+export {
+  getAll,
+  getById,
+  create,
+  update,
+  remove,
+  toggleStatus
+}
