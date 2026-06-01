@@ -5,65 +5,86 @@
 // Si el usuario ya tiene sesión activa, redirige automáticamente.
 // Admin → /admin, Usuario → /
 
-import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
-import "./Login.css"
-import { Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react"
-import logo from "../../assets/images/playground-logo.png"
-import api from "../../api/axios.js"
-import { useApp } from "../../context/AppContext.jsx"
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import "./Login.css";
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import logo from "../../assets/images/playground-logo.png";
+import api from "../../api/axios.js";
+import { useApp } from "../../context/AppContext.jsx";
 
 export default function Login() {
-  const navigate = useNavigate()
-  const { currentUser, updateCurrentUser } = useApp()
-  const [activeInput, setActiveInput] = useState(null)
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+  const navigate = useNavigate();
+  // useLocation permite leer si ProtectedRoute mandó al usuario aquí
+  // desde una ruta protegida como /perfil o /admin.
+  const location = useLocation();
+  const { currentUser, updateCurrentUser } = useApp();
+  // Ruta a la que el usuario quería entrar antes de iniciar sesión.
+  // Si no existe, usamos "/" como ruta por defecto.
+  const redirectTo = location.state?.from ?? "/";
 
-  const [formData, setFormData] = useState({ identifier: "", password: "" })
+  const [activeInput, setActiveInput] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // ─────────────────────────────
+  const [formData, setFormData] = useState({ identifier: "", password: "" });
+
+  // =====================================================
   // REDIRECCIÓN SI YA ESTÁ LOGUEADO
-  // ─────────────────────────────
-  // Si el usuario ya tiene sesión, no necesita ver el login
+  // =====================================================
+  //
+  // Si el usuario ya tiene sesión activa y entra a /login,
+  // lo mandamos a una ruta lógica.
+  //
+  // Casos:
+  // - Si venía de /perfil, lo regresamos a /perfil.
+  // - Si es admin y no venía de ninguna ruta, lo mandamos a /admin.
+  // - Si es usuario normal y no venía de ninguna ruta, lo mandamos a /.
   useEffect(() => {
-    if (currentUser) {
-      navigate(currentUser.role === "admin" ? "/admin" : "/", { replace: true })
-    }
-  }, [currentUser, navigate])
+    if (!currentUser) return;
+
+    const defaultRoute = currentUser.role === "admin" ? "/admin" : "/";
+
+    navigate(redirectTo || defaultRoute, { replace: true });
+  }, [currentUser, navigate, redirectTo]);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-    if (error) setError("")
-  }
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (error) setError("");
+  };
 
   // ─────────────────────────────
   // ENVÍO DEL FORMULARIO
   // ─────────────────────────────
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
     try {
       const response = await api.post("/auth/login", {
-        identifier: formData.identifier,
+        // trim() evita errores por espacios accidentales.
+        // Ejemplo: " Mario788 " → "Mario788"
+        identifier: formData.identifier.trim(),
         password: formData.password,
-      })
-      const { token, user } = response.data
+      });
 
-      // Guardamos token y usuario en localStorage
-      localStorage.setItem("isc_token", token)
-      localStorage.setItem("isc_user", JSON.stringify(user))
+      const { token, user } = response.data;
 
-      // Actualizamos el contexto — el useEffect de arriba hará la redirección
-      updateCurrentUser(user)
+      // Guardamos token y usuario en localStorage.
+      // El token se usará automáticamente en axios.js.
+      localStorage.setItem("isc_token", token);
+      localStorage.setItem("isc_user", JSON.stringify(user));
+
+      // Actualizamos el contexto.
+      // Al cambiar currentUser, el useEffect de arriba hará la redirección.
+      updateCurrentUser(user);
     } catch (err) {
-      setError(err.response?.data?.error || "Error al iniciar sesión")
+      setError(err.response?.data?.error || "Error al iniciar sesión");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="login-page">
@@ -113,7 +134,10 @@ export default function Login() {
                 onFocus={() => setActiveInput("password")}
                 onBlur={() => setActiveInput(null)}
               />
-              <span className="eye" onClick={() => setShowPassword(!showPassword)}>
+              <span
+                className="eye"
+                onClick={() => setShowPassword(!showPassword)}
+              >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </span>
             </div>
@@ -124,15 +148,23 @@ export default function Login() {
           </button>
 
           <div className="login-links">
-            <button type="button" className="link-btn" onClick={() => navigate("/registro")}>
+            <button
+              type="button"
+              className="link-btn"
+              onClick={() => navigate("/registro")}
+            >
               Crear cuenta
             </button>
-            <button type="button" className="link-btn ghost" onClick={() => navigate("/")}>
+            <button
+              type="button"
+              className="link-btn ghost"
+              onClick={() => navigate("/")}
+            >
               ← Volver al inicio
             </button>
           </div>
         </form>
       </div>
     </div>
-  )
+  );
 }
