@@ -1,12 +1,29 @@
-import { createContext, useContext, useCallback, useEffect, useState } from "react"
+// =====================================================
+// CONTEXTO GLOBAL DE LA APLICACIÓN
+// =====================================================
+// Este archivo conecta el front con el backend.
+// Antes el proyecto usaba datos mock/localStorage.
+// Ahora cargamos juegos, usuarios, inscripciones, equipos,
+// partidas y rankings desde la API.
+
+import { createContext, useCallback, useContext, useEffect, useState } from "react"
+
+// Datos estáticos que todavía vienen del frontend.
+// No dependen de la base de datos.
 import { tournamentPhases, matchStatuses } from "../data/tournament"
+
+// Instancia de axios configurada con baseURL y token JWT.
 import api from "../api/axios.js"
 
+// Creamos el contexto.
 const AppContext = createContext()
 
-// ─────────────────────────────
-// LEER USUARIO DEL LOCALSTORAGE
-// ─────────────────────────────
+// =====================================================
+// HELPER: LEER USUARIO DEL LOCALSTORAGE
+// =====================================================
+// El backend maneja la sesión con token JWT.
+// Pero el frontend guarda el usuario en localStorage para
+// recordar la sesión cuando recargas la página.
 const getUserFromStorage = () => {
   try {
     const stored = localStorage.getItem("isc_user")
@@ -16,132 +33,253 @@ const getUserFromStorage = () => {
   }
 }
 
+// =====================================================
+// PROVIDER PRINCIPAL
+// =====================================================
+// Este componente envuelve toda la app desde main.jsx.
+// Todo lo que pongamos en "value" estará disponible usando useApp().
 export function AppProvider({ children }) {
-  // ─────────────────────────────
-  // ESTADO PRINCIPAL
-  // ─────────────────────────────
-  // Arranca vacío — se llena desde el backend
+  // =====================================================
+  // ESTADOS PRINCIPALES
+  // =====================================================
+  // Estos estados reemplazan a los datos mock del front original.
+
+  // Usuario actual logueado.
   const [currentUser, setCurrentUser] = useState(getUserFromStorage)
+
+  // Catálogo de juegos.
   const [gameConfigs, setGameConfigs] = useState([])
+
+  // Lista de usuarios/jugadores.
   const [players, setPlayers] = useState([])
+
+  // Inscripciones de usuarios a juegos.
   const [registrations, setRegistrations] = useState([])
+
+  // Equipos temporales creados por admin.
   const [teams, setTeams] = useState([])
+
+  // Partidas creadas por admin.
   const [matches, setMatches] = useState([])
+
+  // Ranking por juego.
+  // Ejemplo:
+  // {
+  //   "bomb-squad": [...],
+  //   "counter-strike-16": [...]
+  // }
   const [rankingsByGame, setRankingsByGame] = useState({})
+
+  // Ranking global.
   const [globalLeaderboard, setGlobalLeaderboard] = useState([])
+
+  // Loading general para evitar redirecciones antes de cargar datos.
   const [loading, setLoading] = useState(true)
 
-  // ─────────────────────────────
-  // CARGA INICIAL DE DATOS
-  // ─────────────────────────────
-  // Se ejecuta al montar el provider
-  // Carga todos los datos del backend en paralelo
-  const loadAll = useCallback(async () => {
+  // =====================================================
+  // HELPER: PETICIÓN SEGURA
+  // =====================================================
+  // Sirve para que si falla un endpoint secundario,
+  // no se caiga toda la app.
+  //
+  // Ejemplo:
+  // Si falla /rankings/global, todavía queremos que cargue /games.
+  const safeGet = async (url, responseKey, fallbackValue) => {
     try {
-      setLoading(true)
+      const response = await api.get(url)
+      return response.data?.[responseKey] ?? fallbackValue
+    } catch (err) {
+      console.warn(
+        `[AppContext] No se pudo cargar ${url}:`,
+        err.response?.data?.error ?? err.message
+      )
 
-      // Juegos y usuarios — siempre públicos
-      const [gamesRes, usersRes, globalRes] = await Promise.all([
-        api.get("/games"),
-        api.get("/users"),
-        api.get("/rankings/global")
-      ])
+      return fallbackValue
+    }
+  }
 
-      const games = gamesRes.data.games ?? []
+  // =====================================================
+  // CARGA INICIAL DE DATOS
+  // =====================================================
+  // Se ejecuta una vez cuando carga la app.
+  //
+  // Importante:
+  // - Primero cargamos juegos.
+  // - Luego, por cada juego, cargamos equipos, partidas,
+  //   rankings e inscripciones.
+  // - Las inscripciones ahora se cargan por gameId para que
+  //   también sirvan en el dashboard admin.
+  const loadAll = useCallback(async () => {
+    setLoading(true)
+
+    try {
+      // -----------------------------
+      // 1. Cargar juegos
+      // -----------------------------
+      // Este es el dato más importante. Sin juegos, varias páginas
+      // no tienen qué mostrar.
+      const games = await safeGet("/games", "games", [])
       setGameConfigs(games)
-      setPlayers(usersRes.data.users ?? [])
-      setGlobalLeaderboard(globalRes.data.ranking ?? [])
 
-      // Equipos, partidas y rankings por cada juego en paralelo
+      // -----------------------------
+      // 2. Cargar usuarios
+      // -----------------------------
+      // Los usuarios se usan para:
+      // - Dashboard > Usuarios
+      // - Armar equipos
+      // - Mostrar inscritos por juego
+      const users = await safeGet("/users", "users", [])
+      setPlayers(users)
+
+      // -----------------------------
+      // 3. Cargar ranking global
+      // -----------------------------
+      // Si falla, no debe romper Home/Juegos.
+      const globalRanking = await safeGet("/rankings/global", "ranking", [])
+      setGlobalLeaderboard(globalRanking)
+
+      // -----------------------------
+      // 4. Cargar datos por cada juego
+      // -----------------------------
+      // Aquí se agrupa lo relacionado a cada juego:
+      // equipos, partidas, ranking e inscripciones.
       if (games.length > 0) {
         const perGameResults = await Promise.all(
-          games.map(game =>
-            Promise.all([
-              api.get(`/teams?gameId=${game.id}`),
-              api.get(`/matches?gameId=${game.id}`),
-              api.get(`/rankings?gameId=${game.id}`)
-            ]).then(([teamsRes, matchesRes, rankingRes]) => ({
+          games.map(async (game) => {
+            const [gameTeams, gameMatches, gameRanking, gameRegistrations] =
+              await Promise.all([
+                safeGet(`/teams?gameId=${game.id}`, "teams", []),
+                safeGet(`/matches?gameId=${game.id}`, "matches", []),
+                safeGet(`/rankings?gameId=${game.id}`, "ranking", []),
+                safeGet(`/registrations?gameId=${game.id}`, "registrations", []),
+              ])
+
+            return {
               gameId: game.id,
-              teams: teamsRes.data.teams ?? [],
-              matches: matchesRes.data.matches ?? [],
-              ranking: rankingRes.data.ranking ?? []
-            }))
+              teams: gameTeams,
+              matches: gameMatches,
+              ranking: gameRanking,
+              registrations: gameRegistrations,
+            }
+          })
+        )
+
+        // Unimos todos los equipos de todos los juegos.
+        setTeams(perGameResults.flatMap((item) => item.teams))
+
+        // Unimos todas las partidas de todos los juegos.
+        setMatches(perGameResults.flatMap((item) => item.matches))
+
+        // Unimos todas las inscripciones de todos los juegos.
+        // Esto permite que getRegisteredPlayers(gameId) funcione
+        // aunque el usuario actual no sea admin.
+        setRegistrations(perGameResults.flatMap((item) => item.registrations))
+
+        // Convertimos rankings por juego en un objeto:
+        // { gameId: ranking[] }
+        setRankingsByGame(
+          Object.fromEntries(
+            perGameResults.map((item) => [item.gameId, item.ranking])
           )
         )
-
-        const allTeams = perGameResults.flatMap(r => r.teams)
-        const allMatches = perGameResults.flatMap(r => r.matches)
-        const rankingsMap = Object.fromEntries(
-          perGameResults.map(r => [r.gameId, r.ranking])
-        )
-
-        setTeams(allTeams)
-        setMatches(allMatches)
-        setRankingsByGame(rankingsMap)
+      } else {
+        // Si no hay juegos, limpiamos estados dependientes.
+        setTeams([])
+        setMatches([])
+        setRegistrations([])
+        setRankingsByGame({})
       }
-
-      // Inscripciones del usuario actual si está logueado
-      if (getUserFromStorage()?.id) {
-        const regRes = await api.get(`/registrations?userId=${getUserFromStorage().id}`)
-        setRegistrations(regRes.data.registrations ?? [])
-      }
-
     } catch (err) {
-      console.error("[AppContext] Error cargando datos:", err)
+      console.error(
+        "[AppContext] Error general cargando datos:",
+        err.response?.data?.error ?? err.message
+      )
     } finally {
       setLoading(false)
     }
   }, [])
 
+  // Ejecutamos loadAll cuando se monta la app.
   useEffect(() => {
     loadAll()
   }, [loadAll])
 
-  // ─────────────────────────────
+  // =====================================================
   // RECARGAR RANKINGS
-  // ─────────────────────────────
-  // Se llama después de guardar resultados de partidas
+  // =====================================================
+  // Se usa después de registrar resultados de partidas.
   const reloadRankings = async () => {
-    try {
-      const [globalRes, ...gameRankings] = await Promise.all([
-        api.get("/rankings/global"),
-        ...gameConfigs.map(game => api.get(`/rankings?gameId=${game.id}`))
-      ])
-      setGlobalLeaderboard(globalRes.data.ranking ?? [])
-      const rankingsMap = Object.fromEntries(
-        gameConfigs.map((game, i) => [game.id, gameRankings[i].data.ranking ?? []])
-      )
-      setRankingsByGame(rankingsMap)
-    } catch (err) {
-      console.error("[AppContext] Error recargando rankings:", err)
-    }
+    const globalRanking = await safeGet("/rankings/global", "ranking", [])
+
+    const gameRankings = await Promise.all(
+      gameConfigs.map(async (game) => {
+        const ranking = await safeGet(
+          `/rankings?gameId=${game.id}`,
+          "ranking",
+          []
+        )
+
+        return [game.id, ranking]
+      })
+    )
+
+    setGlobalLeaderboard(globalRanking)
+    setRankingsByGame(Object.fromEntries(gameRankings))
   }
 
-  // ─────────────────────────────
-  // USUARIO
-  // ─────────────────────────────
+  // =====================================================
+  // USUARIO / SESIÓN
+  // =====================================================
+
+  // Actualiza currentUser y también localStorage.
+  // Se usa en Login y Perfil.
   const updateCurrentUser = (updates) => {
-    setCurrentUser(prev => {
-      const updated = { ...prev, ...updates }
-      localStorage.setItem("isc_user", JSON.stringify(updated))
-      return updated
+    const updatedUser = currentUser
+      ? { ...currentUser, ...updates }
+      : updates
+
+    setCurrentUser(updatedUser)
+    localStorage.setItem("isc_user", JSON.stringify(updatedUser))
+
+    // También sincronizamos el usuario dentro de players.
+    // Así Perfil y Dashboard > Usuarios ven el cambio sin recargar.
+    setPlayers((prev) => {
+      const exists = prev.some((player) => player.id === updatedUser.id)
+
+      if (exists) {
+        return prev.map((player) =>
+          player.id === updatedUser.id
+            ? { ...player, ...updatedUser }
+            : player
+        )
+      }
+
+      return [updatedUser, ...prev]
     })
   }
 
+  // Cierra sesión.
   const logout = () => {
     localStorage.removeItem("isc_user")
     localStorage.removeItem("isc_token")
     setCurrentUser(null)
-    setRegistrations([])
   }
 
-  // ─────────────────────────────
+  // =====================================================
   // JUEGOS
-  // ─────────────────────────────
+  // =====================================================
+
   const createGame = async (game) => {
     try {
-      const res = await api.post("/games", game)
-      setGameConfigs(prev => [res.data.game, ...prev])
+      // legacyId es importante porque Detalles.jsx navega con /juego/:id.
+      // Si no viene, generamos uno temporal.
+      const payload = {
+        ...game,
+        legacyId: game.legacyId ?? Date.now(),
+      }
+
+      const response = await api.post("/games", payload)
+      setGameConfigs((prev) => [response.data.game, ...prev])
     } catch (err) {
       console.error("[createGame]", err.response?.data?.error ?? err.message)
     }
@@ -149,8 +287,13 @@ export function AppProvider({ children }) {
 
   const updateGame = async (gameId, updates) => {
     try {
-      const res = await api.patch(`/games/${gameId}`, updates)
-      setGameConfigs(prev => prev.map(g => g.id === gameId ? res.data.game : g))
+      const response = await api.patch(`/games/${gameId}`, updates)
+
+      setGameConfigs((prev) =>
+        prev.map((game) =>
+          game.id === gameId ? response.data.game : game
+        )
+      )
     } catch (err) {
       console.error("[updateGame]", err.response?.data?.error ?? err.message)
     }
@@ -159,9 +302,14 @@ export function AppProvider({ children }) {
   const deleteGame = async (gameId) => {
     try {
       await api.delete(`/games/${gameId}`)
-      setGameConfigs(prev => prev.filter(g => g.id !== gameId))
-      setMatches(prev => prev.filter(m => m.gameId !== gameId))
-      setTeams(prev => prev.filter(t => t.gameId !== gameId))
+
+      // Limpiamos localmente todo lo relacionado con ese juego.
+      setGameConfigs((prev) => prev.filter((game) => game.id !== gameId))
+      setTeams((prev) => prev.filter((team) => team.gameId !== gameId))
+      setMatches((prev) => prev.filter((match) => match.gameId !== gameId))
+      setRegistrations((prev) =>
+        prev.filter((registration) => registration.gameId !== gameId)
+      )
     } catch (err) {
       console.error("[deleteGame]", err.response?.data?.error ?? err.message)
     }
@@ -169,41 +317,96 @@ export function AppProvider({ children }) {
 
   const toggleGameStatus = async (gameId) => {
     try {
-      const res = await api.patch(`/games/${gameId}/status`)
-      setGameConfigs(prev => prev.map(g => g.id === gameId ? res.data.game : g))
+      const response = await api.patch(`/games/${gameId}/status`)
+
+      setGameConfigs((prev) =>
+        prev.map((game) =>
+          game.id === gameId ? response.data.game : game
+        )
+      )
     } catch (err) {
       console.error("[toggleGameStatus]", err.response?.data?.error ?? err.message)
     }
   }
 
-  // ─────────────────────────────
+  // =====================================================
   // INSCRIPCIONES
-  // ─────────────────────────────
+  // =====================================================
+
   const registerToGame = async (gameId, userId = currentUser?.id) => {
-    if (!userId || !currentUser) return
+    // Si no hay sesión, no inscribimos.
+    // Luego podemos mejorar esto para redirigir a /login.
+    if (!currentUser || !userId) {
+      console.warn("[registerToGame] No hay usuario logueado")
+      return false
+    }
+
+    // Evita duplicados en frontend antes de llamar al backend.
+    const alreadyRegistered = registrations.some(
+      (registration) =>
+        registration.gameId === gameId &&
+        registration.userId === userId
+    )
+
+    if (alreadyRegistered) {
+      return true
+    }
+
     try {
-      const res = await api.post("/registrations", { userId, gameId })
-      setRegistrations(prev => [...prev, res.data.registration])
-      // Actualizamos el array games del usuario en contexto
-      updateCurrentUser({
-        games: [...(currentUser.games ?? []), gameId]
+      const response = await api.post("/registrations", {
+        userId,
+        gameId,
       })
+
+      const registration = response.data.registration
+
+      setRegistrations((prev) => [...prev, registration])
+
+      // Actualizamos los juegos del usuario actual.
+      updateCurrentUser({
+        games: [...new Set([...(currentUser.games ?? []), gameId])],
+      })
+
+      return true
     } catch (err) {
       console.error("[registerToGame]", err.response?.data?.error ?? err.message)
+      return false
     }
   }
 
   const cancelRegistration = async (gameId, userId = currentUser?.id) => {
-    if (!userId || !currentUser) return false
-    // Buscamos la inscripción real para obtener su id de BD
-    const reg = registrations.find(r => r.gameId === gameId && r.userId === userId)
-    if (!reg) return false
+    if (!currentUser || !userId) {
+      console.warn("[cancelRegistration] No hay usuario logueado")
+      return false
+    }
+
+    const registration = registrations.find(
+      (item) => item.gameId === gameId && item.userId === userId
+    )
+
+    if (!registration) {
+      console.warn("[cancelRegistration] No existe inscripción local")
+      return false
+    }
+
     try {
-      await api.delete(`/registrations/${reg.id}`)
-      setRegistrations(prev => prev.filter(r => !(r.gameId === gameId && r.userId === userId)))
+      // OJO:
+      // Esto funcionará bien cuando el backend devuelva el ID real
+      // de la inscripción. Si el backend devuelve un ID inventado
+      // tipo reg-u-1-bomb-squad, lo corregimos en el siguiente paso.
+      await api.delete(`/registrations/${registration.id}`)
+
+      setRegistrations((prev) =>
+        prev.filter(
+          (item) =>
+            !(item.gameId === gameId && item.userId === userId)
+        )
+      )
+
       updateCurrentUser({
-        games: (currentUser.games ?? []).filter(id => id !== gameId)
+        games: (currentUser.games ?? []).filter((id) => id !== gameId),
       })
+
       return true
     } catch (err) {
       console.error("[cancelRegistration]", err.response?.data?.error ?? err.message)
@@ -211,25 +414,57 @@ export function AppProvider({ children }) {
     }
   }
 
-  const getRegistration = (gameId, userId = currentUser?.id) =>
-    registrations.find(r => r.gameId === gameId && r.userId === userId)
+  // Devuelve la inscripción del usuario actual a un juego.
+  const getRegistration = (gameId, userId = currentUser?.id) => {
+    return registrations.find(
+      (registration) =>
+        registration.gameId === gameId &&
+        registration.userId === userId
+    )
+  }
 
-  const getRegisteredPlayers = (gameId) =>
-    registrations
-      .filter(r => r.gameId === gameId)
-      .map(r => {
-        const player = players.find(p => p.id === r.userId)
-        return player ? { ...player, registrationStatus: r.status, registeredAt: r.registeredAt } : null
+  // Devuelve los usuarios inscritos a un juego.
+  // Esto lo usan Home, Juegos y Dashboard > Equipos.
+  const getRegisteredPlayers = (gameId) => {
+    return registrations
+      .filter((registration) => registration.gameId === gameId)
+      .map((registration) => {
+        const player = players.find(
+          (item) => item.id === registration.userId
+        )
+
+        if (!player) return null
+
+        return {
+          ...player,
+          registrationStatus: registration.status,
+          registeredAt: registration.registeredAt,
+        }
       })
       .filter(Boolean)
+  }
 
-  // ─────────────────────────────
+  // =====================================================
   // EQUIPOS
-  // ─────────────────────────────
-  const createTeam = async ({ name, tag, gameId, playerIds = [], matchId = null }) => {
+  // =====================================================
+
+  const createTeam = async ({
+    name,
+    tag,
+    gameId,
+    playerIds = [],
+    matchId = null,
+  }) => {
     try {
-      const res = await api.post("/teams", { name, tag, gameId, playerIds, matchId })
-      setTeams(prev => [...prev, res.data.team])
+      const response = await api.post("/teams", {
+        name,
+        tag,
+        gameId,
+        playerIds,
+        matchId,
+      })
+
+      setTeams((prev) => [...prev, response.data.team])
     } catch (err) {
       console.error("[createTeam]", err.response?.data?.error ?? err.message)
     }
@@ -237,8 +472,13 @@ export function AppProvider({ children }) {
 
   const updateTeam = async (teamId, updates) => {
     try {
-      const res = await api.patch(`/teams/${teamId}`, updates)
-      setTeams(prev => prev.map(t => t.id === teamId ? res.data.team : t))
+      const response = await api.patch(`/teams/${teamId}`, updates)
+
+      setTeams((prev) =>
+        prev.map((team) =>
+          team.id === teamId ? response.data.team : team
+        )
+      )
     } catch (err) {
       console.error("[updateTeam]", err.response?.data?.error ?? err.message)
     }
@@ -247,7 +487,8 @@ export function AppProvider({ children }) {
   const deleteTeam = async (teamId) => {
     try {
       await api.delete(`/teams/${teamId}`)
-      setTeams(prev => prev.filter(t => t.id !== teamId))
+
+      setTeams((prev) => prev.filter((team) => team.id !== teamId))
     } catch (err) {
       console.error("[deleteTeam]", err.response?.data?.error ?? err.message)
     }
@@ -255,8 +496,16 @@ export function AppProvider({ children }) {
 
   const assignPlayerToTeam = async (teamId, playerId) => {
     try {
-      const res = await api.post(`/teams/${teamId}/players`, { playerId })
-      setTeams(prev => prev.map(t => t.id === teamId ? res.data.team : t))
+      const response = await api.post(`/teams/${teamId}/players`, {
+        playerId,
+      })
+
+      setTeams((prev) =>
+        prev.map((team) =>
+          team.id === teamId ? response.data.team : team
+        )
+      )
+
       return true
     } catch (err) {
       console.error("[assignPlayerToTeam]", err.response?.data?.error ?? err.message)
@@ -266,26 +515,54 @@ export function AppProvider({ children }) {
 
   const removePlayerFromTeam = async (teamId, playerId) => {
     try {
-      const res = await api.delete(`/teams/${teamId}/players/${playerId}`)
-      setTeams(prev => prev.map(t => t.id === teamId ? res.data.team : t))
+      const response = await api.delete(`/teams/${teamId}/players/${playerId}`)
+
+      setTeams((prev) =>
+        prev.map((team) =>
+          team.id === teamId ? response.data.team : team
+        )
+      )
     } catch (err) {
       console.error("[removePlayerFromTeam]", err.response?.data?.error ?? err.message)
     }
   }
 
-  // ─────────────────────────────
+  // =====================================================
   // PARTIDAS
-  // ─────────────────────────────
-  const createMatch = async ({ gameId, stage, phaseType, map, teamIds, scheduledAt, duration = 0 }) => {
+  // =====================================================
+
+  const createMatch = async ({
+    gameId,
+    stage,
+    phaseType,
+    map,
+    teamIds,
+    scheduledAt,
+    duration = 10,
+  }) => {
     try {
-      const res = await api.post("/matches", {
-        gameId, phaseType, stage, map, scheduledAt, duration, teamIds
+      const response = await api.post("/matches", {
+        gameId,
+        phaseType,
+        stage,
+        map,
+        scheduledAt,
+        duration,
+        teamIds,
       })
-      setMatches(prev => [res.data.match, ...prev])
-      // Actualizamos el matchId en los equipos involucrados
-      setTeams(prev => prev.map(t =>
-        teamIds.includes(t.id) ? { ...t, matchId: res.data.match.id } : t
-      ))
+
+      const createdMatch = response.data.match
+
+      setMatches((prev) => [createdMatch, ...prev])
+
+      // Marcamos localmente qué equipos quedaron asociados a la partida.
+      setTeams((prev) =>
+        prev.map((team) =>
+          teamIds.includes(team.id)
+            ? { ...team, matchId: createdMatch.id }
+            : team
+        )
+      )
     } catch (err) {
       console.error("[createMatch]", err.response?.data?.error ?? err.message)
     }
@@ -293,15 +570,17 @@ export function AppProvider({ children }) {
 
   const updateMatchStatus = async (matchId, status) => {
     try {
-      const res = await api.patch(`/matches/${matchId}/status`, { status })
-      setMatches(prev => prev.map(m => m.id === matchId ? res.data.match : m))
-      // Si finaliza o cancela, los equipos pasan a Cerrado localmente también
+      const response = await api.patch(`/matches/${matchId}/status`, {
+        status,
+      })
+
+      setMatches((prev) =>
+        prev.map((match) =>
+          match.id === matchId ? response.data.match : match
+        )
+      )
+
       if (status === "Finalizada" || status === "Cancelada") {
-        const match = matches.find(m => m.id === matchId)
-        const teamIds = match?.teamResults?.map(tr => tr.teamId) ?? []
-        setTeams(prev => prev.map(t =>
-          teamIds.includes(t.id) ? { ...t, status: "Cerrado" } : t
-        ))
         await reloadRankings()
       }
     } catch (err) {
@@ -309,54 +588,110 @@ export function AppProvider({ children }) {
     }
   }
 
-  const updateMatchResult = async (matchId, playerId, stats, points = 0, won = false) => {
+  const updateMatchResult = async (
+    matchId,
+    playerId,
+    stats,
+    points = 0,
+    won = false
+  ) => {
     try {
-      const res = await api.post(`/matches/${matchId}/results`, {
-        playerId, stats, points, won,
-        // El teamId lo obtenemos del estado local
-        teamId: matches
-          .find(m => m.id === matchId)
-          ?.teamResults?.find(tr => tr.playerIds?.includes(playerId))
-          ?.teamId ?? ""
+      const match = matches.find((item) => item.id === matchId)
+
+      // Buscamos el teamId del jugador dentro de los equipos de la partida.
+      const teamId =
+        match?.teamResults?.find((teamResult) =>
+          teamResult.playerIds?.includes(playerId)
+        )?.teamId ?? ""
+
+      const response = await api.post(`/matches/${matchId}/results`, {
+        playerId,
+        teamId,
+        stats,
+        points,
+        won,
       })
-      // Actualizamos el playerResult en el match local
-      setMatches(prev => prev.map(m => {
-        if (m.id !== matchId) return m
-        const existing = m.playerResults ?? []
-        const next = existing.some(r => r.playerId === playerId)
-          ? existing.map(r => r.playerId === playerId ? res.data.result : r)
-          : [...existing, res.data.result]
-        return { ...m, status: "Finalizada", playerResults: next }
-      }))
+
+      const result = response.data.result
+
+      setMatches((prev) =>
+        prev.map((matchItem) => {
+          if (matchItem.id !== matchId) return matchItem
+
+          const existingResults = matchItem.playerResults ?? []
+
+          const nextResults = existingResults.some(
+            (item) => item.playerId === playerId
+          )
+            ? existingResults.map((item) =>
+                item.playerId === playerId ? result : item
+              )
+            : [...existingResults, result]
+
+          return {
+            ...matchItem,
+            status: "Finalizada",
+            playerResults: nextResults,
+            playerIds: [...new Set([...(matchItem.playerIds ?? []), playerId])],
+          }
+        })
+      )
+
       await reloadRankings()
     } catch (err) {
       console.error("[updateMatchResult]", err.response?.data?.error ?? err.message)
     }
   }
 
-  const updateLiveRound = async (matchId, playerId, metricKey, delta = 1) => {
+  const updateLiveRound = async (
+    matchId,
+    playerId,
+    metricKey,
+    delta = 1
+  ) => {
     try {
-      const res = await api.patch(`/matches/${matchId}/live`, {
-        playerId, metricKey, delta
+      const response = await api.patch(`/matches/${matchId}/live`, {
+        playerId,
+        metricKey,
+        delta,
       })
-      setMatches(prev => prev.map(m => {
-        if (m.id !== matchId) return m
-        const existing = m.playerResults ?? []
-        const next = existing.some(r => r.playerId === playerId)
-          ? existing.map(r => r.playerId === playerId ? res.data.result : r)
-          : [...existing, res.data.result]
-        return { ...m, status: "En curso", playerResults: next }
-      }))
+
+      const result = response.data.result
+
+      setMatches((prev) =>
+        prev.map((matchItem) => {
+          if (matchItem.id !== matchId) return matchItem
+
+          const existingResults = matchItem.playerResults ?? []
+
+          const nextResults = existingResults.some(
+            (item) => item.playerId === playerId
+          )
+            ? existingResults.map((item) =>
+                item.playerId === playerId ? result : item
+              )
+            : [...existingResults, result]
+
+          return {
+            ...matchItem,
+            status: "En curso",
+            playerResults: nextResults,
+            playerIds: [...new Set([...(matchItem.playerIds ?? []), playerId])],
+          }
+        })
+      )
     } catch (err) {
       console.error("[updateLiveRound]", err.response?.data?.error ?? err.message)
     }
   }
 
-  // ─────────────────────────────
-  // VALOR DEL CONTEXTO
-  // ─────────────────────────────
+  // =====================================================
+  // VALOR COMPARTIDO DEL CONTEXTO
+  // =====================================================
+  // Todo lo que se coloque aquí podrá usarse con:
+  // const { algo } = useApp()
   const value = {
-    // Estado
+    // Estados
     currentUser,
     gameConfigs,
     tournamentPhases,
@@ -368,35 +703,47 @@ export function AppProvider({ children }) {
     rankingsByGame,
     globalLeaderboard,
     loading,
+
     // Usuario
     updateCurrentUser,
     logout,
+
     // Juegos
     createGame,
     updateGame,
     deleteGame,
     toggleGameStatus,
+
     // Inscripciones
     registerToGame,
     cancelRegistration,
     getRegistration,
     getRegisteredPlayers,
+
     // Equipos
     createTeam,
     updateTeam,
     deleteTeam,
     assignPlayerToTeam,
     removePlayerFromTeam,
+
     // Partidas
     createMatch,
     updateMatchStatus,
     updateMatchResult,
     updateLiveRound,
+
     // Utilidades
     reloadRankings,
+    loadAll,
   }
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>
+  return (
+    <AppContext.Provider value={value}>
+      {children}
+    </AppContext.Provider>
+  )
 }
 
+// Hook personalizado para usar el contexto fácilmente.
 export const useApp = () => useContext(AppContext)

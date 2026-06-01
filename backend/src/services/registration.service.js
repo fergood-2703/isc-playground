@@ -1,9 +1,21 @@
 // =============================
 // SERVICIO DE INSCRIPCIONES
 // =============================
-
-// Aquí vive toda la lógica de negocio de inscripciones.
-// Replica las reglas del Context del frontend según el reporte.
+//
+// Este archivo contiene la lógica de negocio para:
+// - Obtener inscripciones
+// - Crear inscripciones
+// - Cancelar inscripciones
+//
+// IMPORTANTE:
+// Antes el backend devolvía IDs inventados como:
+// reg-u-12-counter-strike-16
+//
+// Pero Prisma realmente guarda IDs tipo cuid(), por ejemplo:
+// cm9x7abc123...
+//
+// Para poder eliminar correctamente, el frontend necesita recibir
+// el ID real de la inscripción.
 
 import * as registrationRepository from '../repositories/registration.repository.js'
 import * as gameRepository from '../repositories/game.repository.js'
@@ -13,93 +25,195 @@ import { extractNumericId } from '../utils/helpers.js'
 // ─────────────────────────────
 // OBTENER INSCRIPCIONES
 // ─────────────────────────────
-// Filtra por gameId o userId según el query param que llegue
+//
+// GET /api/registrations
+// GET /api/registrations?gameId=bomb-squad
+// GET /api/registrations?userId=u-12
 const getAll = async ({ gameId, userId }) => {
-  const registrations = await registrationRepository.findAll({ gameId, userId })
+  const registrations = await registrationRepository.findAll({
+    gameId,
+    userId,
+  })
+
   return registrations.map(formatRegistration)
 }
 
 // ─────────────────────────────
-// INSCRIBIRSE A UN JUEGO
+// CREAR INSCRIPCIÓN
 // ─────────────────────────────
-// Reglas del reporte:
-// 1. No se puede inscribir si ya existe un registro con userId + gameId
-// 2. Al inscribirse se agrega el gameId al array games del usuario
+//
+// POST /api/registrations
+//
+// Body esperado:
+// {
+//   userId: "u-12",
+//   gameId: "bomb-squad"
+// }
 const create = async ({ userId, gameId }) => {
-
-  // Extraemos el id numérico del formato "u-1"
+  // Convertimos "u-12" a 12.
+  // Si llega 12 directamente, también funciona.
   const numericUserId = extractNumericId(userId)
 
-  // Verificamos que el usuario existe
+  // Verificamos que el usuario exista.
   const user = await userRepository.findById(numericUserId)
+
   if (!user) {
     throw new Error('Usuario no encontrado')
   }
 
-  // Verificamos que el juego existe
+  // Verificamos que el juego exista.
   const game = await gameRepository.findById(gameId)
+
   if (!game) {
     throw new Error('Juego no encontrado')
   }
 
-  // Verificamos que no esté ya inscrito
-  // El schema.prisma tiene @@unique([userId, gameId]) que también lo previene
-  const existing = await registrationRepository.findByUserAndGame(numericUserId, gameId)
+  // Evitamos duplicados.
+  // En Prisma también existe @@unique([userId, gameId]),
+  // pero validarlo aquí permite devolver un mensaje más claro.
+  const existing = await registrationRepository.findByUserAndGame(
+    numericUserId,
+    gameId
+  )
+
   if (existing) {
     throw new Error('Ya estás inscrito en este juego')
   }
 
+  // Creamos la inscripción real en base de datos.
   const registration = await registrationRepository.create({
     userId: numericUserId,
-    gameId
+    gameId,
   })
 
+  // Devolvemos la inscripción formateada para el frontend.
   return formatRegistration(registration)
 }
 
 // ─────────────────────────────
 // CANCELAR INSCRIPCIÓN
 // ─────────────────────────────
-// Reglas del reporte:
-// 1. No se puede cancelar si hay partida activa que incluya al usuario
-//    (status distinto de "Pendiente" y "Cancelada")
-// 2. Al cancelar se elimina el gameId del array games del usuario
+//
+// DELETE /api/registrations/:id
+//
+// Ahora aceptamos dos tipos de id:
+//
+// 1. ID real de Prisma:
+//    cm9x7abc123...
+//
+// 2. ID viejo/inventado por compatibilidad:
+//    reg-u-12-counter-strike-16
+//
+// Esto evita que falle si el frontend todavía tiene en memoria
+// una inscripción vieja antes de refrescar.
 const remove = async (id) => {
+  let registration = await registrationRepository.findById(id)
 
-  // Verificamos que la inscripción existe
-  const registration = await registrationRepository.findById(id)
+  // Compatibilidad con IDs viejos tipo:
+  // reg-u-12-counter-strike-16
+  //
+  // Si no encontramos la inscripción por ID real,
+  // intentamos interpretar ese ID viejo para buscar por:
+  // userId + gameId
+  if (!registration) {
+    const parsedLegacyId = parseLegacyRegistrationId(id)
+
+    if (parsedLegacyId) {
+      registration = await registrationRepository.findByUserAndGame(
+        parsedLegacyId.userId,
+        parsedLegacyId.gameId
+      )
+    }
+  }
+
+  // Si después de ambos intentos no existe, devolvemos error.
   if (!registration) {
     throw new Error('Inscripción no encontrada')
   }
 
-  // Verificamos que no haya partida activa para este usuario en este juego
-  // Una partida activa es cualquiera que NO sea "Pendiente" ni "Cancelada"
+  // Verificamos que el usuario no tenga una partida activa.
+  //
+  // Una partida activa es cualquiera que NO sea:
+  // - Pendiente
+  // - Cancelada
   const activeMatch = await registrationRepository.findActiveMatch(
     registration.userId,
     registration.gameId
   )
+
   if (activeMatch) {
-    throw new Error('No puedes cancelar tu inscripción mientras tienes una partida activa')
+    throw new Error(
+      'No puedes cancelar tu inscripción mientras tienes una partida activa'
+    )
   }
 
-  await registrationRepository.remove(id)
+  // IMPORTANTE:
+  // Eliminamos usando registration.id, no usando el id recibido.
+  //
+  // Esto permite que funcione tanto si llegó un ID real como
+  // si llegó un ID viejo tipo reg-u-12-bomb-squad.
+  await registrationRepository.remove(registration.id)
+}
+
+// ─────────────────────────────
+// HELPER: PARSEAR ID VIEJO
+// ─────────────────────────────
+//
+// Convierte esto:
+// reg-u-12-counter-strike-16
+//
+// En esto:
+// {
+//   userId: 12,
+//   gameId: "counter-strike-16"
+// }
+const parseLegacyRegistrationId = (id) => {
+  const match = String(id).match(/^reg-u-(\d+)-(.+)$/)
+
+  if (!match) {
+    return null
+  }
+
+  return {
+    userId: Number(match[1]),
+    gameId: match[2],
+  }
 }
 
 // ─────────────────────────────
 // HELPER: FORMATEAR INSCRIPCIÓN
 // ─────────────────────────────
-// El front espera el id como "reg-u-1-counter-strike-16"
-// y el userId como "u-1"
+//
+// Esta función transforma la inscripción real de Prisma
+// al formato que el frontend usa.
+//
+// Cambio importante:
+// - id ahora es registration.id real de Prisma.
+// - legacyId queda solo como referencia visual/compatibilidad.
 const formatRegistration = (registration) => {
   return {
-    id: `reg-u-${registration.userId}-${registration.gameId}`,
+    // ID REAL de la base de datos.
+    // Este es el que debe usarse para DELETE.
+    id: registration.id,
+
+    // ID viejo/inventado.
+    // Lo dejamos por si en algún lugar quieres mostrarlo o depurar.
+    legacyId: `reg-u-${registration.userId}-${registration.gameId}`,
+
+    // El frontend maneja usuarios como "u-12".
     userId: `u-${registration.userId}`,
+
+    // ID del juego.
     gameId: registration.gameId,
+
+    // Estado de la inscripción.
     status: registration.status,
+
+    // Fecha formateada para mostrar en frontend.
     registeredAt: registration.registeredAt
       .toISOString()
       .replace('T', ' ')
-      .substring(0, 16) // formato "2026-05-10 09:00"
+      .substring(0, 16),
   }
 }
 

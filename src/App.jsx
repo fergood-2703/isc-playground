@@ -1,21 +1,25 @@
-// =============================
-// RUTAS DE LA APLICACIÓN
-// =============================
-
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 
+// páginas públicas
 import Home from "./pages/Home/Home"
 import Login from "./pages/Login/Login"
 import Registro from "./pages/Registro/Registro"
+import JuegosPage from "./pages/Juegos/Juegos"
+import RankingPage from "./pages/Ranking/Ranking"
+import AboutPage from "./pages/About/About"
+import Perfil from "./pages/Perfil/Perfil"
 import Detalles from "./pages/Juegos/Detalles/Detalles"
+
+// protección
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute"
 
+// dashboard admin
 import DashboardLayout from "./pages/Dashboard/DashboardLayout"
 import DashboardHome from "./pages/Dashboard/views/DashboardHome"
-import Juegos from "./pages/Dashboard/views/Juegos"
+import JuegosAdmin from "./pages/Dashboard/views/Juegos"
 import Equipos from "./pages/Dashboard/views/Equipos"
 import Usuarios from "./pages/Dashboard/views/Usuarios"
-import Ranking from "./pages/Dashboard/views/Ranking"
+import RankingAdmin from "./pages/Dashboard/views/Ranking"
 import Partidas from "./pages/Dashboard/views/Partidas"
 import CrearAdmin from "./pages/Dashboard/views/CrearAdmin"
 
@@ -23,18 +27,17 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* ─────────────────────────────── */}
-        {/* RUTAS PÚBLICAS                  */}
-        {/* ─────────────────────────────── */}
+        {/* RUTAS PÚBLICAS */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
+        <Route path="/juegos" element={<JuegosPage />} />
+        <Route path="/ranking" element={<RankingPage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/perfil" element={<Perfil />} />
         <Route path="/juego/:id" element={<Detalles />} />
 
-        {/* ─────────────────────────────── */}
-        {/* RUTAS PROTEGIDAS — SOLO ADMIN   */}
-        {/* Sin token o sin rol admin → /   */}
-        {/* ─────────────────────────────── */}
+        {/* RUTAS PROTEGIDAS — SOLO ADMIN */}
         <Route
           path="/admin"
           element={
@@ -44,11 +47,11 @@ export default function App() {
           }
         >
           <Route index element={<DashboardHome />} />
-          <Route path="juegos" element={<Juegos />} />
+          <Route path="juegos" element={<JuegosAdmin />} />
           <Route path="partidas" element={<Partidas />} />
           <Route path="usuarios" element={<Usuarios />} />
           <Route path="equipos" element={<Equipos />} />
-          <Route path="ranking" element={<Ranking />} />
+          <Route path="ranking" element={<RankingAdmin />} />
           <Route path="crear-admin" element={<CrearAdmin />} />
         </Route>
       </Routes>
