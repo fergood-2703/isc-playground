@@ -410,25 +410,45 @@ export function AppProvider({ children }) {
   };
 
   // =====================================================
-  // INSCRIPCIONES
+  // INSCRIBIR USUARIO A JUEGO
   // =====================================================
-
+  //
+  // Regla oficial:
+  // Un usuario solo puede inscribirse a UN juego.
+  //
+  // Esta validación existe aquí para dar respuesta rápida en frontend,
+  // pero también se valida en backend para seguridad real.
   const registerToGame = async (gameId, userId = currentUser?.id) => {
-    // Si no hay sesión, no inscribimos.
-    // Luego podemos mejorar esto para redirigir a /login.
     if (!currentUser || !userId) {
       console.warn("[registerToGame] No hay usuario logueado");
       return false;
     }
 
-    // Evita duplicados en frontend antes de llamar al backend.
-    const alreadyRegistered = registrations.some(
-      (registration) =>
-        registration.gameId === gameId && registration.userId === userId,
+    // Buscamos si el usuario ya tiene una inscripción en cualquier juego.
+    const existingUserRegistration = registrations.find(
+      (registration) => registration.userId === userId,
     );
 
-    if (alreadyRegistered) {
+    // Si ya está inscrito en el mismo juego, no hacemos otro POST.
+    if (existingUserRegistration?.gameId === gameId) {
       return true;
+    }
+
+    // Si ya está inscrito en otro juego, bloqueamos.
+    if (
+      existingUserRegistration &&
+      existingUserRegistration.gameId !== gameId
+    ) {
+      console.warn(
+        "[registerToGame] El usuario ya está inscrito en otro juego:",
+        existingUserRegistration.gameId,
+      );
+
+      alert(
+        "Solo puedes inscribirte a un juego. Cancela tu inscripción actual desde tu perfil antes de elegir otro.",
+      );
+
+      return false;
     }
 
     try {
@@ -441,25 +461,36 @@ export function AppProvider({ children }) {
 
       setRegistrations((prev) => [...prev, registration]);
 
-      // Actualizamos los juegos del usuario actual.
       updateCurrentUser({
-        games: [...new Set([...(currentUser.games ?? []), gameId])],
+        games: [gameId],
       });
 
       return true;
     } catch (err) {
-      console.error(
-        "[registerToGame]",
-        err.response?.data?.error ?? err.message,
-      );
+      const message = err.response?.data?.error ?? err.message;
+
+      console.error("[registerToGame]", message);
+
+      alert(message);
+
       return false;
     }
   };
 
+  // =====================================================
+  // CANCELAR INSCRIPCIÓN
+  // =====================================================
+  //
+  // Cancela la inscripción del usuario actual.
+  // El backend puede bloquear la cancelación si el usuario
+  // tiene una partida En preparación o En curso.
   const cancelRegistration = async (gameId, userId = currentUser?.id) => {
     if (!currentUser || !userId) {
       console.warn("[cancelRegistration] No hay usuario logueado");
-      return false;
+      return {
+        ok: false,
+        message: "No hay usuario logueado.",
+      };
     }
 
     const registration = registrations.find(
@@ -468,14 +499,14 @@ export function AppProvider({ children }) {
 
     if (!registration) {
       console.warn("[cancelRegistration] No existe inscripción local");
-      return false;
+
+      return {
+        ok: false,
+        message: "No existe una inscripción local para cancelar.",
+      };
     }
 
     try {
-      // OJO:
-      // Esto funcionará bien cuando el backend devuelva el ID real
-      // de la inscripción. Si el backend devuelve un ID inventado
-      // tipo reg-u-1-bomb-squad, lo corregimos en el siguiente paso.
       await api.delete(`/registrations/${registration.id}`);
 
       setRegistrations((prev) =>
@@ -488,13 +519,19 @@ export function AppProvider({ children }) {
         games: (currentUser.games ?? []).filter((id) => id !== gameId),
       });
 
-      return true;
+      return {
+        ok: true,
+        message: "Inscripción cancelada correctamente.",
+      };
     } catch (err) {
-      console.error(
-        "[cancelRegistration]",
-        err.response?.data?.error ?? err.message,
-      );
-      return false;
+      const message = err.response?.data?.error ?? err.message;
+
+      console.error("[cancelRegistration]", message);
+
+      return {
+        ok: false,
+        message,
+      };
     }
   };
 
@@ -814,6 +851,15 @@ export function AppProvider({ children }) {
     }
   };
 
+  // Devuelve la inscripción actual de un usuario,
+  // sin importar a qué juego esté inscrito.
+  //
+  // Sirve para aplicar la regla:
+  // "un usuario solo puede inscribirse a un juego".
+  const getUserRegistration = (userId = currentUser?.id) => {
+    return registrations.find((registration) => registration.userId === userId);
+  };
+
   // =====================================================
   // VALOR COMPARTIDO DEL CONTEXTO
   // =====================================================
@@ -848,6 +894,7 @@ export function AppProvider({ children }) {
     registerToGame,
     cancelRegistration,
     getRegistration,
+    getUserRegistration,
     getRegisteredPlayers,
 
     // Equipos

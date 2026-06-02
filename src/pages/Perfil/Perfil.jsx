@@ -143,10 +143,10 @@ export default function Perfil() {
 
     if (!confirmed) return;
 
-    const ok = await cancelRegistration(gameId, player.id);
+    const result = await cancelRegistration(gameId, player.id);
 
-    if (!ok) {
-      alert("No se pudo cancelar la inscripción.");
+    if (!result.ok) {
+      alert(result.message || "No se pudo cancelar la inscripción.");
     }
   };
 
