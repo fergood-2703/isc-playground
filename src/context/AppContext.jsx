@@ -264,6 +264,59 @@ export function AppProvider({ children }) {
     });
   };
 
+  // =====================================================
+  // ACTUALIZAR PERFIL EN BACKEND
+  // =====================================================
+  //
+  // Esta función se usa en /perfil.
+  //
+  // Diferencia importante:
+  // - updateCurrentUser() solo actualiza el estado local.
+  // - updateProfile() manda PATCH al backend y luego sincroniza el estado.
+  //
+  // Endpoint usado:
+  // PATCH /api/users/:id
+  //
+  // Body:
+  // {
+  //   username,
+  //   name
+  // }
+  const updateProfile = async (updates) => {
+    if (!currentUser?.id) {
+      console.warn("[updateProfile] No hay usuario logueado");
+      return false;
+    }
+
+    try {
+      const response = await api.patch(`/users/${currentUser.id}`, {
+        username: updates.username?.trim(),
+        name: updates.name?.trim(),
+      });
+
+      const updatedUser = response.data.user;
+
+      // Actualizamos currentUser y localStorage.
+      setCurrentUser(updatedUser);
+      localStorage.setItem("isc_user", JSON.stringify(updatedUser));
+
+      // También actualizamos la lista de jugadores.
+      setPlayers((prev) =>
+        prev.map((player) =>
+          player.id === updatedUser.id ? { ...player, ...updatedUser } : player,
+        ),
+      );
+
+      return true;
+    } catch (err) {
+      console.error(
+        "[updateProfile]",
+        err.response?.data?.error ?? err.message,
+      );
+      return false;
+    }
+  };
+
   // Cierra sesión.
   const logout = () => {
     localStorage.removeItem("isc_user");
@@ -782,6 +835,7 @@ export function AppProvider({ children }) {
 
     // Usuario
     updateCurrentUser,
+    updateProfile,
     logout,
 
     // Juegos
