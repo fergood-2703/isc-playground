@@ -145,9 +145,15 @@ app.use("/api/rankings", rankingRoutes);
 // Express lo reconoce por tener 4 parámetros
 app.use(errorHandler);
 
-// ─────────────────────────────
-// ARRANCAR SERVIDOR
-// ─────────────────────────────
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
-});
+// =====================================================
+// INICIAR SERVIDOR
+// =====================================================
+//
+// 0.0.0.0 permite que el backend acepte conexiones
+// desde otros dispositivos en la misma red local.
+//
+// Ejemplo:
+// http://192.168.1.45:3000/api/games
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Servidor corriendo en http://0.0.0.0:${PORT}`)
+})
