@@ -54,7 +54,6 @@ export default function Detalles() {
     registerToGame,
     cancelRegistration,
     getRegistration,
-    getUserRegistration,
     getRegisteredPlayers,
   } = useApp();
 
@@ -94,16 +93,11 @@ export default function Detalles() {
   // Inscripción del usuario actual a este juego.
   const registration = game ? getRegistration(game.id) : null;
 
-  // Inscripción actual del usuario a cualquier juego.
-  // Sirve para aplicar la regla:
-  // "un usuario solo puede inscribirse a un juego".
-  const userRegistration = currentUser ? getUserRegistration?.() : null;
-
-  // Saber si el usuario ya está inscrito en otro juego diferente.
-  const isRegisteredInAnotherGame =
-    Boolean(userRegistration) &&
-    Boolean(game) &&
-    userRegistration.gameId !== game.id;
+  // Regla actual:
+  // El usuario puede inscribirse a varios juegos.
+  // La restricción real está en equipos:
+  // no puede estar en dos equipos activos del mismo juego.
+  const isRegisteredInAnotherGame = false;
 
   // Lista de jugadores inscritos al juego actual.
   const registeredPlayers = game ? getRegisteredPlayers(game.id) : [];
@@ -191,16 +185,6 @@ export default function Detalles() {
       return;
     }
 
-    // Si ya está inscrito en otro juego, bloqueamos desde frontend.
-    // El backend también debe bloquearlo.
-    if (isRegisteredInAnotherGame) {
-      alert(
-        "Solo puedes inscribirte a un juego. Cancela tu inscripción actual desde tu perfil antes de elegir otro.",
-      );
-
-      return;
-    }
-
     const ok = await registerToGame(game.id);
 
     if (!ok) {
@@ -240,7 +224,7 @@ export default function Detalles() {
     if (registration) {
       return `✓ Inscrito · ${registration.status}`;
     }
-
+    //posible cambio
     if (isRegisteredInAnotherGame) {
       return "Ya estás inscrito en otro juego";
     }
@@ -301,8 +285,9 @@ export default function Detalles() {
             <h2>⚡ Inscripción al juego</h2>
 
             <p>
-              Solo puedes inscribirte a un juego. Si quieres cambiar de juego,
-              primero debes cancelar tu inscripción actual desde tu perfil.
+              Puedes inscribirte a varios juegos. Después, el administrador
+              formará equipos temporales con los jugadores inscritos. Un jugador
+              solo puede estar en un equipo activo por juego.
             </p>
 
             <div className="enrollment-stats">
@@ -369,6 +354,61 @@ export default function Detalles() {
               game.description ||
               "Este juego todavía no tiene una descripción configurada."}
           </p>
+        </section>
+
+        {/* =====================================================
+    DESCARGA Y MANUALES
+   ===================================================== */}
+        <section className="detalles-section">
+          <h2>⬇️ Descarga y manuales</h2>
+
+          <p>
+            En esta sección puedes acceder al juego y consultar los manuales
+            necesarios para participar correctamente en el torneo.
+          </p>
+
+          <div className="download-manuals-grid">
+            <div className="download-card">
+              <h3>Juego</h3>
+
+              {official?.download ? (
+                <a
+                  className="btn-download-game"
+                  href={official.download.url}
+                  target={
+                    official.download.type === "external" ? "_blank" : "_self"
+                  }
+                  rel="noreferrer"
+                  download={official.download.type === "file"}
+                >
+                  {official.download.label}
+                </a>
+              ) : (
+                <p>No hay enlace de descarga configurado para este juego.</p>
+              )}
+            </div>
+
+            <div className="download-card">
+              <h3>Manuales PDF</h3>
+
+              <div className="manual-list">
+                {official?.manuals?.map((manual) => (
+                  <a
+                    key={manual.url}
+                    href={manual.url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    📄 {manual.title}
+                  </a>
+                ))}
+
+                {!official?.manuals?.length && (
+                  <p>No hay manuales configurados para este juego.</p>
+                )}
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* =====================================================

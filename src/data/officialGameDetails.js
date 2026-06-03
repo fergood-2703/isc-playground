@@ -28,6 +28,20 @@ export const officialGameDetails = [
     jugadores: 20,
     formato: "5vs5",
     dispositivo: "PC/Laptop",
+
+    download: {
+      label: "Descargar Counter-Strike 1.6",
+      url: "/downloads/counter-strike-16.zip",
+      type: "file",
+    },
+
+    manuals: [
+      {
+        title: "Manual oficial de Counter-Strike 1.6",
+        url: "/manuales/manual-counter-strike-16.pdf",
+      },
+    ],
+
     descripcion:
       "Counter-Strike 1.6 es un videojuego de disparos en primera persona (FPS) táctico por equipos. Enfrenta a dos bandos: Terroristas (T) y Counter-Terrorists (CT), quienes deben cumplir objetivos específicos o eliminar al equipo rival para ganar la ronda. Se caracteriza por su alta exigencia de precisión, manejo estratégico de la economía y la importancia del trabajo en equipo.",
     mecanicas: [
@@ -139,6 +153,20 @@ export const officialGameDetails = [
     jugadores: 10,
     formato: "2-4 por equipo",
     dispositivo: "Teléfono móvil",
+
+    download: {
+      label: "Abrir BombSquad en Play Store",
+      url: "https://play.google.com/store/apps/details?id=net.froemling.bombsquad",
+      type: "external",
+    },
+
+    manuals: [
+      {
+        title: "Manual oficial de BombSquad",
+        url: "/manuales/manual-bombsquad.pdf",
+      },
+    ],
+
     descripcion:
       "BombSquad es un videojuego multijugador de acción y fiesta donde los jugadores controlan personajes que luchan entre sí utilizando bombas, puñetazos y habilidades en diferentes arenas. Se caracteriza por su estilo caótico, físico tipo ragdoll, partidas rápidas y modos cooperativos o competitivos tanto local como en línea.",
     mecanicas: [
@@ -267,6 +295,20 @@ export const officialGameDetails = [
     jugadores: 20,
     formato: "4 por equipo",
     dispositivo: "Teléfono móvil",
+
+    download: {
+      label: "Abrir Soul Knight en Play Store",
+      url: "https://play.google.com/store/apps/details?id=com.ChillyRoom.DungeonShooter",
+      type: "external",
+    },
+
+    manuals: [
+      {
+        title: "Manual oficial de Soul Knight",
+        url: "/manuales/manual-soul-knight.pdf",
+      },
+    ],
+
     descripcion:
       "Soul Knight es un videojuego de acción tipo roguelike con vista cenital, donde los jugadores exploran mazmorras generadas aleatoriamente, enfrentan enemigos y jefes, y recolectan armas y mejoras para avanzar. Se caracteriza por su ritmo rápido, gran variedad de armas, personajes con habilidades únicas y modos tanto individuales como cooperativos.",
     mecanicas: [

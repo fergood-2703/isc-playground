@@ -42,13 +42,14 @@ const getAll = async ({ gameId, userId }) => {
 // CREAR INSCRIPCIÓN
 // ─────────────────────────────
 //
-// Regla oficial:
-// Un usuario solo puede inscribirse a UN juego.
+// Regla corregida:
+// Un usuario SÍ puede inscribirse a varios juegos.
 //
-// Ejemplo:
-// - Si ya está inscrito en Counter Strike,
-//   no puede inscribirse a Bomb Squad.
-// - Primero debe cancelar su inscripción anterior.
+// Lo que NO se permite:
+// - Duplicar inscripción en el mismo juego.
+//
+// La regla de equipos se maneja en team.service.js:
+// Un jugador no puede estar en dos equipos Activos del mismo juego.
 const create = async ({ userId, gameId }) => {
   // Convertimos "u-12" a 12.
   // Si llega 12 directamente, también funciona.
@@ -68,18 +69,14 @@ const create = async ({ userId, gameId }) => {
     throw new Error("Juego no encontrado");
   }
 
-  // Verificamos si el usuario ya tiene cualquier inscripción.
-  const existingUserRegistration =
-    await registrationRepository.findByUser(numericUserId);
+  // Evitamos duplicar inscripción en el mismo juego.
+  const existing = await registrationRepository.findByUserAndGame(
+    numericUserId,
+    gameId,
+  );
 
-  if (existingUserRegistration) {
-    if (existingUserRegistration.gameId === gameId) {
-      throw new Error("Ya estás inscrito en este juego");
-    }
-
-    throw new Error(
-      "Solo puedes inscribirte a un juego. Cancela tu inscripción actual antes de elegir otro juego.",
-    );
+  if (existing) {
+    throw new Error("Ya estás inscrito en este juego");
   }
 
   // Creamos la inscripción real en base de datos.

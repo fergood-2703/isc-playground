@@ -413,42 +413,28 @@ export function AppProvider({ children }) {
   // INSCRIBIR USUARIO A JUEGO
   // =====================================================
   //
-  // Regla oficial:
-  // Un usuario solo puede inscribirse a UN juego.
+  // Regla corregida:
+  // Un usuario puede inscribirse a varios juegos.
   //
-  // Esta validación existe aquí para dar respuesta rápida en frontend,
-  // pero también se valida en backend para seguridad real.
+  // Lo único que bloqueamos aquí:
+  // - Que se inscriba dos veces al mismo juego.
+  //
+  // La restricción de equipos se aplica en Dashboard > Equipos:
+  // un jugador no puede estar en dos equipos activos del mismo juego.
   const registerToGame = async (gameId, userId = currentUser?.id) => {
     if (!currentUser || !userId) {
       console.warn("[registerToGame] No hay usuario logueado");
       return false;
     }
 
-    // Buscamos si el usuario ya tiene una inscripción en cualquier juego.
-    const existingUserRegistration = registrations.find(
-      (registration) => registration.userId === userId,
+    // Evita duplicados en el mismo juego.
+    const alreadyRegistered = registrations.some(
+      (registration) =>
+        registration.gameId === gameId && registration.userId === userId,
     );
 
-    // Si ya está inscrito en el mismo juego, no hacemos otro POST.
-    if (existingUserRegistration?.gameId === gameId) {
+    if (alreadyRegistered) {
       return true;
-    }
-
-    // Si ya está inscrito en otro juego, bloqueamos.
-    if (
-      existingUserRegistration &&
-      existingUserRegistration.gameId !== gameId
-    ) {
-      console.warn(
-        "[registerToGame] El usuario ya está inscrito en otro juego:",
-        existingUserRegistration.gameId,
-      );
-
-      alert(
-        "Solo puedes inscribirte a un juego. Cancela tu inscripción actual desde tu perfil antes de elegir otro.",
-      );
-
-      return false;
     }
 
     try {
@@ -461,8 +447,9 @@ export function AppProvider({ children }) {
 
       setRegistrations((prev) => [...prev, registration]);
 
+      // Guardamos todos los juegos del usuario, no solo uno.
       updateCurrentUser({
-        games: [gameId],
+        games: [...new Set([...(currentUser.games ?? []), gameId])],
       });
 
       return true;
@@ -470,7 +457,6 @@ export function AppProvider({ children }) {
       const message = err.response?.data?.error ?? err.message;
 
       console.error("[registerToGame]", message);
-
       alert(message);
 
       return false;
