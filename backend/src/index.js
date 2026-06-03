@@ -27,7 +27,11 @@ const PORT = process.env.PORT || 3000;
 // para que los preflights OPTIONS respondan correctamente
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: [
+      "http://localhost:5173",
+      "http://192.168.20.162:5173",
+      "http://www.playground.com:5173"
+    ],
     methods: ["GET", "POST", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
@@ -155,5 +159,5 @@ app.use(errorHandler);
 // Ejemplo:
 // http://192.168.1.45:3000/api/games
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Servidor corriendo en http://0.0.0.0:${PORT}`)
+  console.log(`Servidor corriendo en http://127.0.0.1:${PORT}`)
 })
