@@ -25,3 +25,8 @@ dist-ssr
 # environment variables
 .env
 .env.*
+
+# Archivos pesados de descargas locales
+public/downloads/*.zip
+public/downloads/*.rar
+public/downloads/*.7z
