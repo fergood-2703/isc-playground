@@ -1,86 +1,64 @@
+// =====================================================
+// PÁGINA: HOME
+// =====================================================
+//
+// Esta página ya no usa datos estáticos.
+// Ahora toma datos desde AppContext, que a su vez carga desde backend:
+//
+// - gameConfigs        → GET /api/games
+// - players            → GET /api/users
+// - matches            → GET /api/matches?gameId=...
+// - registrations      → GET /api/registrations?gameId=...
+// - globalLeaderboard  → GET /api/rankings/global
+// - rankingsByGame     → GET /api/rankings?gameId=...
+
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+
 import Navbar from "../../components/Navbar/Navbar";
 import StatsChart from "../../components/StatsChart/StatsChart";
 import logo from "../../assets/images/playground-logo.png";
 import { useApp } from "../../context/AppContext";
+
 import "./Home.css";
-
-const activity = [
-  {
-    tag: "Soul Knight",
-    text: "Carlos derrotó a 3 bosses en una run perfecta",
-    time: "hace 4 min",
-    tone: "green",
-  },
-  {
-    tag: "Bomb Squad",
-    text: "Nuevo récord de eliminaciones: 24 KOs",
-    time: "hace 11 min",
-    tone: "cyan",
-  },
-  {
-    tag: "CS 1.6",
-    text: "Semifinal A iniciada en de_dust2",
-    time: "en vivo",
-    tone: "purple",
-  },
-  {
-    tag: "Ranking",
-    text: "fergood subió al top 3 global",
-    time: "hace 22 min",
-    tone: "gold",
-  },
-];
-
-const topPlayers = [
-  { name: "Omarx", game: "CS 1.6", points: 1240, trend: "+18%", rank: 1 },
-  {
-    name: "lucia.gg",
-    game: "Soul Knight",
-    points: 1118,
-    trend: "+12%",
-    rank: 2,
-  },
-  { name: "fergood", game: "Bomb Squad", points: 1094, trend: "+9%", rank: 3 },
-];
-
-const activeMatches = [
-  {
-    game: "Counter Strike",
-    stage: "Semifinal",
-    status: "LIVE",
-    score: "11 - 8",
-  },
-  {
-    game: "Bomb Squad",
-    stage: "Clasificatoria",
-    status: "15:30",
-    score: "Lobby listo",
-  },
-  {
-    game: "Soul Knight",
-    stage: "Casual",
-    status: "Abierta",
-    score: "3/4 players",
-  },
-];
 
 export default function Home() {
   const navigate = useNavigate();
 
   const {
-    // Usuario actual. Sirve para saber si está logueado.
+    // Usuario actual.
     currentUser,
 
-    // Datos cargados desde backend.
+    // Datos desde backend.
     gameConfigs,
+    players,
+    matches,
+    registrations,
     rankingsByGame,
+    globalLeaderboard,
+    loading,
 
-    // Funciones del contexto.
+    // Funciones.
     registerToGame,
     getRegistration,
     getRegisteredPlayers,
   } = useApp();
+
+  // =====================================================
+  // ESTADÍSTICAS PRINCIPALES
+  // =====================================================
+
+  const activePlayers = players.filter(
+    (player) => player.status === "Activo",
+  ).length;
+
+  const officialGames = gameConfigs.length;
+
+  const totalMatches = matches.length;
+
+  // =====================================================
+  // GRÁFICA DE INSCRITOS POR JUEGO
+  // =====================================================
 
   const playersData = gameConfigs.map((game) => ({
     name: game.shortName,
@@ -88,11 +66,109 @@ export default function Home() {
   }));
 
   // =====================================================
-  // MANEJAR INSCRIPCIÓN DESDE HOME
+  // PARTIDAS ACTIVAS / RECIENTES
   // =====================================================
-  // Si no hay sesión, mandamos al usuario a /login.
-  // Si ya está inscrito, no hacemos otro POST.
-  // Si no está inscrito, llamamos al backend con registerToGame().
+  //
+  // Reemplaza el array estático activeMatches.
+  const activeMatches = useMemo(() => {
+    const priority = {
+      "En curso": 1,
+      "En preparación": 2,
+      Pendiente: 3,
+      Finalizada: 4,
+      Cancelada: 5,
+    };
+
+    return [...matches]
+      .sort((a, b) => {
+        const aPriority = priority[a.status] ?? 99;
+        const bPriority = priority[b.status] ?? 99;
+
+        if (aPriority !== bPriority) {
+          return aPriority - bPriority;
+        }
+
+        return String(b.scheduledAt).localeCompare(String(a.scheduledAt));
+      })
+      .slice(0, 3)
+      .map((match) => {
+        const game = gameConfigs.find((item) => item.id === match.gameId);
+
+        return {
+          game: game?.shortName ?? "Juego",
+          stage: match.stage,
+          status: match.status === "En curso" ? "LIVE" : match.status,
+          score: match.map || match.phaseType,
+        };
+      });
+  }, [gameConfigs, matches]);
+
+  // =====================================================
+  // ACTIVIDAD DEL SISTEMA
+  // =====================================================
+  //
+  // Reemplaza el array estático activity.
+  // Se arma con inscripciones, partidas y ranking.
+  const activity = useMemo(() => {
+    const items = [];
+
+    // Últimas inscripciones.
+    registrations.slice(-3).forEach((registration) => {
+      const game = gameConfigs.find((item) => item.id === registration.gameId);
+
+      const player = players.find((item) => item.id === registration.userId);
+
+      items.push({
+        tag: game?.shortName ?? "Inscripción",
+        text: `@${player?.username ?? "usuario"} se inscribió a ${
+          game?.name ?? registration.gameId
+        }`,
+        time: registration.registeredAt ?? "reciente",
+        tone: "cyan",
+      });
+    });
+
+    // Últimas partidas.
+    matches.slice(0, 3).forEach((match) => {
+      const game = gameConfigs.find((item) => item.id === match.gameId);
+
+      items.push({
+        tag: game?.shortName ?? "Partida",
+        text: `${match.stage} · ${match.status}`,
+        time: match.scheduledAt ?? "programada",
+        tone: match.status === "En curso" ? "green" : "purple",
+      });
+    });
+
+    // Líder global.
+    if (globalLeaderboard[0]) {
+      items.push({
+        tag: "Ranking",
+        text: `@${globalLeaderboard[0].player?.username ?? "usuario"} lidera el ranking global`,
+        time: `${Math.round(globalLeaderboard[0].score ?? 0)} pts`,
+        tone: "gold",
+      });
+    }
+
+    return items.slice(0, 4);
+  }, [gameConfigs, globalLeaderboard, matches, players, registrations]);
+
+  // =====================================================
+  // TOP JUGADORES DESDE RANKING GLOBAL
+  // =====================================================
+
+  const topPlayers = globalLeaderboard.slice(0, 3).map((row, index) => ({
+    name: row.player?.username ?? "sin_usuario",
+    game: "Ranking global",
+    points: Math.round(row.score ?? 0),
+    trend: `${row.wins ?? 0} victorias`,
+    rank: row.rank ?? index + 1,
+  }));
+
+  // =====================================================
+  // MANEJAR INSCRIPCIÓN
+  // =====================================================
+
   const handleRegistration = (event, gameId) => {
     event.stopPropagation();
 
@@ -140,17 +216,17 @@ export default function Home() {
 
             <div className="hero-stats">
               <div>
-                <strong>50</strong>
+                <strong>{loading ? "..." : activePlayers}</strong>
                 <span>jugadores activos</span>
               </div>
 
               <div>
-                <strong>3</strong>
+                <strong>{loading ? "..." : officialGames}</strong>
                 <span>juegos oficiales</span>
               </div>
 
               <div>
-                <strong>120</strong>
+                <strong>{loading ? "..." : totalMatches}</strong>
                 <span>partidas registradas</span>
               </div>
             </div>
@@ -161,9 +237,18 @@ export default function Home() {
           </div>
         </section>
 
+        {/* PARTIDAS ACTIVAS / RECIENTES */}
         <section className="live-strip">
+          {activeMatches.length === 0 && (
+            <article>
+              <span>Sin partidas</span>
+              <strong>Calendario vacío</strong>
+              <p>Crea partidas desde el panel admin.</p>
+            </article>
+          )}
+
           {activeMatches.map((match) => (
-            <article key={`${match.game}-${match.stage}`}>
+            <article key={`${match.game}-${match.stage}-${match.status}`}>
               <span>{match.status}</span>
               <strong>{match.game}</strong>
               <p>
@@ -190,6 +275,7 @@ export default function Home() {
                 <div className="game-info">
                   <div className="game-card-heading">
                     <h3>{game.name}</h3>
+
                     <span>
                       {getRegisteredPlayers(game.id).length} inscritos
                     </span>
@@ -200,13 +286,13 @@ export default function Home() {
                   <div className="game-mini-meta">
                     <span>{game.status}</span>
                     <span>{game.format}</span>
+
                     <span>
                       Top: @{rankingLeader?.player?.username ?? "pendiente"}
                     </span>
                   </div>
 
                   <div className="game-actions-row">
-                    
                     <button
                       className={
                         registration
@@ -243,6 +329,7 @@ export default function Home() {
         </div>
 
         <section className="command-center">
+          {/* ACTIVIDAD REAL */}
           <div className="activity-panel premium-panel">
             <div className="section-heading">
               <span>Actividad del sistema</span>
@@ -250,8 +337,19 @@ export default function Home() {
             </div>
 
             <div className="activity-feed">
+              {activity.length === 0 && (
+                <article className="feed-item cyan">
+                  <span>Sistema</span>
+                  <p>Todavía no hay actividad registrada.</p>
+                  <small>pendiente</small>
+                </article>
+              )}
+
               {activity.map((item) => (
-                <article className={`feed-item ${item.tone}`} key={item.text}>
+                <article
+                  className={`feed-item ${item.tone}`}
+                  key={`${item.tag}-${item.text}-${item.time}`}
+                >
                   <span>{item.tag}</span>
                   <p>{item.text}</p>
                   <small>{item.time}</small>
@@ -260,11 +358,26 @@ export default function Home() {
             </div>
           </div>
 
+          {/* TOP GLOBAL REAL */}
           <div className="top-panel premium-panel">
             <div className="section-heading">
               <span>Top jugadores</span>
               <h2>Jugadores en tendencia</h2>
             </div>
+
+            {topPlayers.length === 0 && (
+              <article className="player-card">
+                <b>#</b>
+
+                <div>
+                  <strong>Sin ranking</strong>
+                  <span>Finaliza partidas para generar datos</span>
+                </div>
+
+                <p>0 pts</p>
+                <em>pendiente</em>
+              </article>
+            )}
 
             {topPlayers.map((player) => (
               <article className="player-card" key={player.name}>
@@ -291,13 +404,26 @@ export default function Home() {
           </div>
 
           <div className="premium-panel tournament-card">
-            <span>Próximo torneo</span>
-            <h2>Neon Cup Weekend</h2>
+            <span>Estado del torneo</span>
+
+            <h2>
+              {activeMatches[0]
+                ? activeMatches[0].game
+                : "Sin partidas activas"}
+            </h2>
+
             <p>
-              Bracket de Counter Strike + desafío cooperativo de Soul Knight.
-              Inscripciones mock abiertas.
+              {activeMatches[0]
+                ? `${activeMatches[0].stage} · ${activeMatches[0].status}`
+                : "Cuando el administrador cree partidas, aparecerán aquí automáticamente."}
             </p>
-            <button className="btn-secondary">Ver calendario</button>
+
+            <button
+              className="btn-secondary"
+              onClick={() => navigate("/juegos")}
+            >
+              Ver juegos
+            </button>
           </div>
         </section>
       </div>

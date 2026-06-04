@@ -66,4 +66,21 @@ const update = async (id, { username, name }) => {
   })
 }
 
-export { findAll, findById, findByUsername, update }
+// ─────────────────────────────
+// ELIMINAR USUARIO
+// ─────────────────────────────
+//
+// Elimina físicamente un usuario de la base de datos.
+//
+// IMPORTANTE:
+// En schema.prisma las relaciones de User tienen onDelete: Cascade,
+// por eso también se eliminan sus:
+// - inscripciones
+// - participaciones en equipos
+// - resultados individuales
+const remove = async (id) => {
+  return await prisma.user.delete({
+    where: { id }
+  })
+}
+export { findAll, findById, findByUsername, update, remove }

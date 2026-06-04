@@ -317,6 +317,45 @@ export function AppProvider({ children }) {
     }
   };
 
+  // =====================================================
+  // ELIMINAR USUARIO COMO ADMIN
+  // =====================================================
+  //
+  // Se usa en Dashboard > Usuarios.
+  //
+  // Endpoint:
+  // DELETE /api/users/:id
+  //
+  // Después de eliminar, recargamos todos los datos porque la eliminación
+  // puede afectar:
+  // - usuarios
+  // - inscripciones
+  // - equipos
+  // - resultados
+  // - rankings
+  const deleteUser = async (userId) => {
+    try {
+      await api.delete(`/users/${userId}`);
+
+      // Sincronizamos todo con la base de datos.
+      await loadAll();
+
+      return {
+        ok: true,
+        message: "Usuario eliminado correctamente.",
+      };
+    } catch (err) {
+      const message = err.response?.data?.error ?? err.message;
+
+      console.error("[deleteUser]", message);
+
+      return {
+        ok: false,
+        message,
+      };
+    }
+  };
+
   // Cierra sesión.
   const logout = () => {
     localStorage.removeItem("isc_user");
@@ -868,6 +907,7 @@ export function AppProvider({ children }) {
     // Usuario
     updateCurrentUser,
     updateProfile,
+    deleteUser,
     logout,
 
     // Juegos

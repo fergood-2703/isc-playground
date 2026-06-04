@@ -7,7 +7,7 @@
 
 import express from 'express'
 import * as userController from '../controllers/user.controller.js'
-import { verifyToken } from '../middlewares/auth.middleware.js'
+import { verifyToken, verifyAdmin } from '../middlewares/auth.middleware.js'
 
 const router = express.Router()
 
@@ -20,6 +20,10 @@ router.get('/', userController.getAll)
 router.get('/:id', userController.getById)
 
 // Rutas protegidas — cualquier usuario autenticado
+
+// DELETE /api/users/:id
+// Solo administradores pueden eliminar usuarios.
+router.delete('/:id', verifyToken, verifyAdmin, userController.remove)
 
 // PATCH /api/users/:id → editar perfil (username, name)
 router.patch('/:id', verifyToken, userController.update)
