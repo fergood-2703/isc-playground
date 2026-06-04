@@ -30,7 +30,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "http://192.168.20.162:5173",
-      "http://www.playground.com:5173"
+      "http://www.playground.com:5173",
     ],
     methods: ["GET", "POST", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -45,33 +45,77 @@ app.use(
 app.use(helmet());
 
 // ─────────────────────────────
-// RATE LIMITING GLOBAL
+// RATE LIMITING
 // ─────────────────────────────
 //
-// En producción sí conviene limitar peticiones para evitar abuso.
-// Pero en desarrollo React puede hacer muchas peticiones rápidamente,
-// especialmente cuando AppContext carga juegos, usuarios, rankings,
-// equipos, partidas e inscripciones.
+// Para pruebas con muchos usuarios en el salón:
 //
-// Por eso usamos un límite más alto en desarrollo.
-const limiter = rateLimit({
+// - No bloqueamos fuerte las peticiones GET en desarrollo.
+// - Sí protegemos login/registro con un límite separado.
+// - Evitamos contar peticiones OPTIONS de CORS.
+// - Evitamos que la app se vea "congelada" por errores 429.
+//
+// Nota:
+// En producción puedes hacer estos límites más estrictos.
+
+const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
 
-  // Si NODE_ENV es production usamos un límite más estricto.
-  // En desarrollo usamos un límite alto para evitar errores 429
-  // mientras probamos el frontend.
-  max: process.env.NODE_ENV === "production" ? 300 : 2000,
+  // En producción mantenemos control.
+  // En desarrollo/salón damos margen amplio.
+  max: process.env.NODE_ENV === "production" ? 3000 : 10000,
 
-  // No contamos preflight requests de CORS.
-  // Esto evita gastar límite con peticiones OPTIONS.
-  skip: (req) => req.method === "OPTIONS",
+  // En desarrollo no contamos GET porque la app hace muchas lecturas:
+  // /games, /users, /rankings, /matches, /registrations, etc.
+  //
+  // Tampoco contamos OPTIONS porque son preflight de CORS.
+  skip: (req) => {
+    if (req.method === "OPTIONS") return true;
+
+    // En desarrollo ignoramos GET para evitar 429 al cargar datos.
+    if (process.env.NODE_ENV !== "production" && req.method === "GET") {
+      return true;
+    }
+
+    // Auth tendrá su propio limiter.
+    if (req.path.startsWith("/api/auth")) {
+      return true;
+    }
+
+    return false;
+  },
+
+  standardHeaders: true,
+  legacyHeaders: false,
 
   message: {
-    error: "Demasiadas peticiones, intenta más tarde",
+    error: "Demasiadas peticiones generales, intenta más tarde",
   },
 });
 
-app.use(limiter);
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+
+  // Login y registro sí deben estar protegidos.
+  // Para salón 300 está bien.
+  // Para producción podrías bajarlo a 50 o 100.
+  max: process.env.NODE_ENV === "production" ? 100 : 300,
+
+  skip: (req) => req.method === "OPTIONS",
+
+  standardHeaders: true,
+  legacyHeaders: false,
+
+  message: {
+    error: "Demasiados intentos de autenticación, intenta más tarde",
+  },
+});
+
+// Aplicamos rate limit general.
+app.use(generalLimiter);
+
+// Aplicamos rate limit específico para auth.
+app.use("/api/auth", authLimiter);
 
 // ─────────────────────────────
 // MIDDLEWARES GENERALES
@@ -159,5 +203,5 @@ app.use(errorHandler);
 // Ejemplo:
 // http://192.168.1.45:3000/api/games
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Servidor corriendo en http://127.0.0.1:${PORT}`)
-})
+  console.log(`Servidor corriendo en http://127.0.0.1:${PORT}`);
+});
